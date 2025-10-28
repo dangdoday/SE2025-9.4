@@ -55,3 +55,178 @@ Dựa trên việc tính toán và so sánh hai đường trung bình động đ
 ✅ **Ghi log giao dịch**, hiển thị biểu đồ trực quan và trạng thái hoạt động của bot.
 
 ✅ **Hoàn thiện tài liệu** hướng dẫn sử dụng, báo cáo học thuật và video demo sản phẩm.
+
+---
+
+## **6. Cấu trúc Project**
+
+```
+SE2025-9.4/
+├── design/                      # 🎨 Thiết kế UI/UX
+│   ├── figma-files/            # File .fig export từ Figma
+│   ├── assets/                 # Icons, images, components
+│   ├── screenshots/            # Screenshots các screens
+│   ├── README.md               # Design guidelines
+│   ├── QUICK_START.md          # Hướng dẫn nhanh cho designer
+│   ├── wireframes.md           # Wireframe specifications
+│   ├── design-tokens.json      # Design system tokens
+│   └── CHANGELOG.md            # Lịch sử thay đổi design
+│
+├── frontend/                   # ⚛️ React + Vite + TypeScript
+│   ├── src/
+│   ├── public/
+│   └── package.json
+│
+├── backend/                    # 🚀 Node.js + Express + TypeScript
+│   ├── src/
+│   └── package.json
+│
+├── data_download/              # 📊 Historical data
+│   └── *.csv
+│
+└── docs/                       # 📚 Documentation
+```
+
+---
+
+## **7. Design Workflow với Figma**
+
+### 🎨 Quy trình thiết kế
+
+1. **Thiết kế trên Figma**
+   - Tạo/chỉnh sửa design theo [Design Guidelines](./design/README.md)
+   - Follow [Wireframes](./design/wireframes.md) specifications
+   - Use Design System từ [design-tokens.json](./design/design-tokens.json)
+
+2. **Export từ Figma**
+   ```
+   File → Save as .fig → Lưu vào design/figma-files/
+   Export screens → PNG (2x) → Lưu vào design/screenshots/
+   Export assets → SVG/PNG → Lưu vào design/assets/
+   ```
+
+3. **Commit lên GitHub**
+   ```bash
+   git add design/
+   git commit -m "design: update dashboard layout v1.2"
+   git push origin main
+   ```
+
+4. **Review & Iterate**
+   - Team review trên Figma comments
+   - Update theo feedback
+   - Re-export và commit
+
+### 📋 Quy tắc đặt tên
+
+- **File Figma:** `CryptoBot-Design-YYYY-MM-DD.fig`
+- **Screenshots:** `[ScreenName]-v[Version]-YYYY-MM-DD.png`
+- **Assets:** `[category]-[name]-[size].svg`
+
+### 🔗 Resources
+
+- **Design Guidelines:** [design/README.md](./design/README.md)
+- **Quick Start Guide:** [design/QUICK_START.md](./design/QUICK_START.md)
+- **Wireframes:** [design/wireframes.md](./design/wireframes.md)
+- **Design System:** [design/design-tokens.json](./design/design-tokens.json)
+
+---
+
+## **8. Getting Started**
+
+### Prerequisites
+- Node.js >= 18.x
+- npm hoặc yarn
+- Binance Testnet Account
+- Figma Account (cho designers)
+
+### Setup
+
+#### 1. Clone Repository
+```bash
+git clone https://github.com/dangdoday/SE2025-9.4.git
+cd SE2025-9.4
+```
+
+#### 2. Setup Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+#### 3. Setup Backend
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+#### 4. Design (Dành cho Designers)
+1. Đọc [Design Quick Start](./design/QUICK_START.md)
+2. Tạo Figma project
+3. Follow [Design Guidelines](./design/README.md)
+4. Export và push lên GitHub theo workflow
+
+---
+
+## **9. Team Workflow**
+
+### Designers
+1. Design screens theo wireframes
+2. Export files từ Figma
+3. Commit vào `design/` folder
+4. Update CHANGELOG.md
+5. Notify developers
+
+### Frontend Developers
+1. Review design trong `design/screenshots/`
+2. Check design specs trong `design/wireframes.md`
+3. Implement UI với React
+4. Use design tokens từ `design-tokens.json`
+5. Request clarification nếu cần
+
+### Backend Developers
+1. Review API requirements
+2. Implement Binance integration
+3. Create REST/WebSocket endpoints
+4. Test với Testnet
+
+---
+
+## **10. Contributing**
+
+1. Create branch từ `main`
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. Make changes và commit
+   ```bash
+   git add .
+   git commit -m "type: description"
+   ```
+   
+   **Commit types:**
+   - `feat`: New feature
+   - `fix`: Bug fix
+   - `design`: Design changes
+   - `docs`: Documentation
+   - `refactor`: Code refactoring
+
+3. Push và create Pull Request
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+---
+
+## **11. Resources & References**
+
+- [Binance Testnet](https://testnet.binance.vision/)
+- [Binance API Documentation](https://binance-docs.github.io/apidocs/spot/en/)
+- [TradingView Charting Library](https://www.tradingview.com/charting-library-docs/)
+- [React Documentation](https://react.dev/)
+- [Figma Best Practices](https://www.figma.com/best-practices/)
+
+````
