@@ -1,6 +1,0 @@
-# This file keeps the design directory in git
-
-## Directory structure:
-- figma-files/    : Store .fig files exported from Figma
-- assets/         : Store design assets (icons, images, etc.)
-- screenshots/    : Store screen previews
