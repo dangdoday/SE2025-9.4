@@ -105,6 +105,8 @@ def create_token(data: dict, secret_key: str, token_type: str = "access") -> str
     return encoded_jwt
 
 
+
+
 def http_basic_or_jwt_token(
     form_data: HTTPBasicCredentials = Depends(httpbasic),
     token: str = Depends(oauth2_scheme),
