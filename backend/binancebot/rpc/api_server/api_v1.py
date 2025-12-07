@@ -93,6 +93,7 @@ logger = logging.getLogger(__name__)
 # 2.43: Add /profit_all endpoint
 API_VERSION = 2.43
 
+
 # Public API, requires no auth.
 router_public = APIRouter()
 # Private API, protected by authentication
