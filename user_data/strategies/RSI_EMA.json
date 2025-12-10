@@ -1,0 +1,51 @@
+{
+  "strategy_name": "RSI_EMA",
+  "params": {
+    "max_open_trades": {
+      "max_open_trades": 10
+    },
+    "buy": {
+      "atr_mult": 1.21,
+      "buy_rsi_oversold": 29,
+      "buy_volume_factor": 1.5,
+      "distance_threshold": 4.1,
+      "ema_compression_level": 0.43,
+      "ema_slope_min": 0.109,
+      "kelly_multiplier": 0.2,
+      "risk_per_trade": 0.068,
+      "rsi_divergence_strength": 0.34,
+      "rsi_divergence_window": 16,
+      "rsi_slope_length": 2,
+      "rsi_slope_min": 1.02,
+      "short_ema_slope_max": -0.395,
+      "short_rsi_slope_max": -0.95,
+      "short_rsi_threshold": 75,
+      "short_volume_factor": 1.37,
+      "volume_delta_min": 2.67
+    },
+    "sell": {
+      "sell_atr_mult": 1.35,
+      "sell_ema_slope_max": -0.464,
+      "sell_rsi_overbought": 74,
+      "sell_rsi_slope_min": -0.51,
+      "sell_volume_factor": 2.0
+    },
+    "roi": {
+      "0": 0.243,
+      "1872": 0.212,
+      "4442": 0.045,
+      "8518": 0
+    },
+    "stoploss": {
+      "stoploss": -0.349
+    },
+    "trailing": {
+      "trailing_stop": true,
+      "trailing_stop_positive": 0.015,
+      "trailing_stop_positive_offset": 0.111,
+      "trailing_only_offset_is_reached": true
+    }
+  },
+  "ft_stratparam_v": 1,
+  "export_time": "2025-12-04 09:12:31.536164+00:00"
+}
