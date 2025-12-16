@@ -267,7 +267,7 @@ def print_results(
                 csv_path=csv_path,
             )
     else:
-        print("\\No trades to show")
+        print("No trades to show")
 
 
 def _merge_dfs(
