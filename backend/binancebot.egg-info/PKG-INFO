@@ -1,0 +1,900 @@
+Metadata-Version: 2.4
+Name: binancebot
+Version: 1.0.0
+Summary: BinanceBot - Crypto Trading Bot for Binance
+Author: SE2025-9.4 Team
+Author-email: "SE2025-9.4 Team" <se2025@example.com>
+License: GPLv3
+Project-URL: Homepage, https://github.com/dangdoday/SE2025-9.4
+Project-URL: Documentation, https://github.com/dangdoday/SE2025-9.4#readme
+Project-URL: Bug Tracker, https://github.com/dangdoday/SE2025-9.4/issues
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: Unix
+Classifier: Topic :: Office/Business :: Financial :: Investment
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: ccxt>=4.5.4
+Requires-Dist: SQLAlchemy>=2.0.6
+Requires-Dist: humanize>=4.0.0
+Requires-Dist: cachetools
+Requires-Dist: requests
+Requires-Dist: httpx>=0.24.1
+Requires-Dist: urllib3
+Requires-Dist: jsonschema
+Requires-Dist: numpy<2.0,>=1.23.5
+Requires-Dist: pandas<3.0,>=2.2.0
+Requires-Dist: TA-Lib<0.7
+Requires-Dist: ft-pandas-ta
+Requires-Dist: technical
+Requires-Dist: tabulate
+Requires-Dist: pycoingecko>=3.2.0
+Requires-Dist: python-rapidjson
+Requires-Dist: orjson
+Requires-Dist: jinja2
+Requires-Dist: questionary
+Requires-Dist: prompt-toolkit
+Requires-Dist: joblib>=1.2.0
+Requires-Dist: rich
+Requires-Dist: pyarrow; platform_machine != "armv7l"
+Requires-Dist: fastapi
+Requires-Dist: pydantic>=2.2.0
+Requires-Dist: pyjwt
+Requires-Dist: websockets
+Requires-Dist: uvicorn
+Requires-Dist: psutil
+Requires-Dist: schedule
+Requires-Dist: janus
+Requires-Dist: ast-comments
+Requires-Dist: aiofiles
+Requires-Dist: aiohttp
+Requires-Dist: cryptography
+Requires-Dist: sdnotify
+Requires-Dist: python-dateutil
+Requires-Dist: pytz
+Requires-Dist: packaging
+Provides-Extra: plot
+Requires-Dist: plotly>=4.0; extra == "plot"
+Provides-Extra: hyperopt
+Requires-Dist: scipy; extra == "hyperopt"
+Requires-Dist: scikit-learn; extra == "hyperopt"
+Requires-Dist: optuna>4.0.0; extra == "hyperopt"
+Requires-Dist: cmaes; extra == "hyperopt"
+Requires-Dist: filelock; extra == "hyperopt"
+Provides-Extra: freqai
+Requires-Dist: scikit-learn; extra == "freqai"
+Requires-Dist: joblib; extra == "freqai"
+Requires-Dist: catboost; platform_machine != "arm" and extra == "freqai"
+Requires-Dist: lightgbm; extra == "freqai"
+Requires-Dist: xgboost; extra == "freqai"
+Requires-Dist: tensorboard; extra == "freqai"
+Requires-Dist: datasieve>=0.1.5; extra == "freqai"
+Provides-Extra: freqai-rl
+Requires-Dist: torch; (sys_platform != "darwin" or platform_machine != "x86_64") and extra == "freqai-rl"
+Requires-Dist: gymnasium; extra == "freqai-rl"
+Requires-Dist: stable-baselines3; (sys_platform != "darwin" or platform_machine != "x86_64") and extra == "freqai-rl"
+Requires-Dist: sb3-contrib; (sys_platform != "darwin" or platform_machine != "x86_64") and extra == "freqai-rl"
+Requires-Dist: tqdm; extra == "freqai-rl"
+Provides-Extra: develop
+Requires-Dist: isort; extra == "develop"
+Requires-Dist: mypy; extra == "develop"
+Requires-Dist: pre-commit; extra == "develop"
+Requires-Dist: pytest-asyncio; extra == "develop"
+Requires-Dist: pytest-cov; extra == "develop"
+Requires-Dist: pytest-mock; extra == "develop"
+Requires-Dist: pytest-random-order; extra == "develop"
+Requires-Dist: pytest-timeout; extra == "develop"
+Requires-Dist: pytest-xdist; extra == "develop"
+Requires-Dist: pytest; extra == "develop"
+Requires-Dist: ruff; extra == "develop"
+Requires-Dist: scipy-stubs; extra == "develop"
+Requires-Dist: time-machine; extra == "develop"
+Requires-Dist: types-cachetools; extra == "develop"
+Requires-Dist: types-filelock; extra == "develop"
+Requires-Dist: types-python-dateutil; extra == "develop"
+Requires-Dist: types-requests; extra == "develop"
+Requires-Dist: types-tabulate; extra == "develop"
+Provides-Extra: jupyter
+Requires-Dist: jupyter; extra == "jupyter"
+Requires-Dist: nbstripout; extra == "jupyter"
+Requires-Dist: ipykernel; extra == "jupyter"
+Requires-Dist: nbconvert; extra == "jupyter"
+Provides-Extra: all
+Requires-Dist: binancebot[freqai,freqai_rl,hyperopt,jupyter,plot]; extra == "all"
+Provides-Extra: dev
+Requires-Dist: binancebot[all,develop]; extra == "dev"
+Dynamic: license-file
+
+# 🤖 BinanceBot - Hệ thống Giao dịch Cryptocurrency Tự động
+
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Vue](https://img.shields.io/badge/Vue-3.5-green.svg)](https://vuejs.org/)
+[![License](https://img.shields.io/badge/License-GPLv3-orange.svg)](LICENSE)
+[![Binance](https://img.shields.io/badge/Binance-Spot%20Trading-yellow.svg)](https://www.binance.com/)
+
+> **Đề tài:** Xây dựng ứng dụng Front-end kết nối Binance API để thiết kế thuật toán tự động trading  
+> **Môn học:** Công nghệ Phần mềm (SE2025) - Nhóm 9.4  
+> **Chiến lược:** RSI + EMA với Dynamic Position Sizing  
+> **Kết quả Backtest:** +74.3% profit, 73.4% win rate (2 năm data)
+
+---
+
+## 📖 Mục lục
+
+- [Tổng quan](#-tổng-quan)
+- [Kiến trúc hệ thống](#-kiến-trúc-hệ-thống)
+- [Cấu trúc Project](#-cấu-trúc-project)
+- [Cài đặt](#-cài-đặt)
+- [Hướng dẫn sử dụng](#-hướng-dẫn-sử-dụng)
+- [Chiến lược RSI_EMA](#-chiến-lược-rsi_ema)
+- [Frontend UI](#-frontend-ui)
+- [Cấu hình](#-cấu-hình)
+- [Testing](#-testing)
+- [Development](#-development)
+- [License](#-license)
+
+---
+
+## 📖 Tổng quan
+
+BinanceBot là hệ thống trading tự động toàn diện, kết hợp giữa **Backend Trading Engine** (Python) và **Frontend Dashboard** (Vue 3), được thiết kế để giao dịch cryptocurrency trên Binance Exchange một cách chuyên nghiệp.
+
+### 🎯 Mục tiêu đề tài
+
+1. **Xây dựng giao diện web** trực quan để quản lý bot trading
+2. **Tích hợp Binance API** cho việc thu thập dữ liệu và thực hiện giao dịch
+3. **Phát triển thuật toán trading** dựa trên các chỉ báo kỹ thuật (RSI, EMA)
+4. **Backtesting & Optimization** để tối ưu hóa chiến lược
+5. **Risk Management** với stop-loss, position sizing, ROI targets
+
+### ✨ Tính năng chính
+
+#### 🎯 Trading Core (Backend)
+- ✅ **Live Trading** - Giao dịch tự động 24/7 trên Binance
+- ✅ **Paper Trading** - Mô phỏng giao dịch với dry-run wallet (1000 USDT)
+- ✅ **Backtesting** - Test chiến lược với 2+ năm dữ liệu lịch sử
+- ✅ **Hyperopt** - Tối ưu tham số tự động (2000 epochs)
+- ✅ **25+ Strategies** - Thư viện chiến lược sẵn có
+- ✅ **Risk Management** - Stop Loss (-12%), ROI Targets (20%/15%/10%/5%)
+
+#### 🎨 Frontend Dashboard (UI)
+- ✅ **Dashboard** - Tổng quan tài khoản, balance, P&L
+- ✅ **Live Trading View** - Charts với RSI/EMA indicators
+- ✅ **Backtest Results** - Kết quả backtest chi tiết với charts
+- ✅ **Hyperopt Monitor** - Theo dõi optimization real-time
+- ✅ **Settings** - Quản lý API keys, strategy params
+- ✅ **Binance Theme** - Giao diện vàng đặc trưng của Binance
+
+#### 🔧 Technical Stack
+- ✅ **REST API + WebSocket** - Real-time communication
+- ✅ **SQLite Database** - Lưu trữ trade history
+- ✅ **CCXT Library** - Multi-exchange support
+- ✅ **TA-Lib** - Technical analysis indicators
+- ✅ **Docker Ready** - Containerized deployment
+
+### 📊 Kết quả Demo
+
+**Backtest Period:** 01/01/2023 - 01/12/2025 (2 năm)  
+**Chiến lược:** RSI_EMA với Kelly Criterion Position Sizing  
+**Timeframe:** 4h candlesticks
+
+| Metric | Value |
+|--------|-------|
+| **Total Profit** | +742.73 USDT |
+| **Profit %** | +74.27% |
+| **Win Rate** | 73.42% (58/79 trades) |
+| **Max Drawdown** | 14.65% |
+| **Sharpe Ratio** | 2.31 |
+| **Best Trade** | +98.65 USDT (OP/USDT) |
+| **Avg Duration** | 13h 30m |
+
+---
+
+## 🏗️ Kiến trúc hệ thống
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                   BINANCEBOT SYSTEM ARCHITECTURE                  │
+└──────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                  FRONTEND (Vue 3 + TypeScript + Vite)               │
+│  ┌───────────┬────────────┬────────────┬────────────┬───────────┐  │
+│  │ Dashboard │ Live Trade │  Backtest  │  Hyperopt  │ Settings  │  │
+│  │ - Balance │ - Charts   │  - Results │  - Monitor │ - API Key │  │
+│  │ - P&L     │ - Trades   │  - Metrics │  - Logs    │ - Strategy│  │
+│  └───────────┴────────────┴────────────┴────────────┴───────────┘  │
+│                                                                      │
+│  Tech Stack: Vue 3, TypeScript, PrimeVue, ECharts, TailwindCSS     │
+└──────────────────────────────┬───────────────────────────────────────┘
+                               │
+                   ┌───────────┴───────────┐
+                   │   HTTP REST API       │
+                   │   WebSocket (WS)      │
+                   └───────────┬───────────┘
+                               │
+┌──────────────────────────────▼────────────────────────────────────────┐
+│             BACKEND ENGINE (Python 3.11 / FreqTrade Fork)             │
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │                     TRADING CORE                              │   │
+│  ├──────────────────────────────────────────────────────────────┤   │
+│  │  Strategy Engine      │  Risk Manager     │  Order Manager   │   │
+│  │  - RSI_EMA Algo       │  - Stop Loss      │  - Entry/Exit    │   │
+│  │  - Entry Signals      │  - Position Size  │  - Order Book    │   │
+│  │  - Exit Signals       │  - Kelly Criterion│  - Execution     │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │                OPTIMIZATION & ANALYSIS                        │   │
+│  ├──────────────────────────────────────────────────────────────┤   │
+│  │  Backtesting         │  Hyperopt          │  FreqAI (ML)     │   │
+│  │  - Historical Test   │  - Param Optimize  │  - Prediction    │   │
+│  │  - Perf Metrics      │  - 2000 epochs     │  - Classification│   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │                  DATA & PERSISTENCE                           │   │
+│  ├──────────────────────────────────────────────────────────────┤   │
+│  │  DataProvider        │  Database          │  Wallets         │   │
+│  │  - OHLCV Data        │  - SQLite          │  - Balance       │   │
+│  │  - Orderbook         │  - Trade History   │  - Fee Calc      │   │
+│  │  - Market Cache      │  - Positions       │  - Dry-run Mode  │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+└──────────────────────────────┬─────────────────────────────────────────┘
+                               │
+                   ┌───────────┴───────────┐
+                   │  CCXT Exchange API    │
+                   └───────────┬───────────┘
+                               │
+┌──────────────────────────────▼────────────────────────────────────────┐
+│                       BINANCE EXCHANGE                                 │
+│  ┌─────────────────┬─────────────────┬─────────────────┐              │
+│  │  Spot Market    │  Market Data    │  WebSocket      │              │
+│  │  - Buy/Sell     │  - Ticker       │  - Real-time    │              │
+│  │  - Order Book   │  - Candles      │  - Updates      │              │
+│  │  - Execution    │  - Depth        │  - Price Feed   │              │
+│  └─────────────────┴─────────────────┴─────────────────┘              │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 🔄 Data Flow
+
+```
+1. Market Data → CCXT → DataProvider → Strategy Engine → Signals
+2. Signals → Risk Manager → Position Sizing → Order Manager → Exchange
+3. Trade Results → Database → REST API → Frontend Dashboard
+4. User Actions (UI) → API → Backend → Exchange Operations
+```
+
+---
+
+## 📂 Cấu trúc Project
+
+```
+SE2025-9.4/
+│
+├── 📱 binancebot-ui/                   # Frontend Dashboard
+│   ├── src/
+│   │   ├── components/                # UI Components
+│   │   │   ├── layout/               # NavBar, Footer, Sidebar
+│   │   │   ├── charts/               # Trading Charts
+│   │   │   └── ftbot/                # Bot Components
+│   │   ├── views/                    # Pages
+│   │   │   ├── HomeView.vue          # Login/Register
+│   │   │   ├── Dashboard.vue         # Main Dashboard
+│   │   │   ├── Trading.vue           # Live Trading
+│   │   │   ├── BacktestView.vue      # Backtest Results
+│   │   │   └── HyperoptView.vue      # Hyperopt Monitor
+│   │   ├── stores/                   # State Management
+│   │   │   ├── ftbotwrapper.ts       # Main Bot Store
+│   │   │   └── ftbot.ts              # Bot State
+│   │   ├── composables/              # Composables
+│   │   │   ├── loginInfo.ts          # Auth Logic
+│   │   │   └── useApi.ts             # API Calls
+│   │   ├── types/                    # TypeScript Types
+│   │   ├── router/                   # Routing
+│   │   └── styles/                   # CSS/Tailwind
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── tsconfig.json
+│
+├── 🐍 src/binancebot/                  # Backend Engine
+│   ├── __main__.py                   # Entry Point
+│   ├── binancebot.py                 # Main Bot (FreqtradeBot)
+│   ├── worker.py                     # Worker Process
+│   ├── wallets.py                    # Wallet Management
+│   │
+│   ├── commands/                     # CLI Commands
+│   │   ├── trade_commands.py         # Trading CLI
+│   │   ├── data_commands.py          # Data Download
+│   │   └── hyperopt_commands.py      # Hyperopt CLI
+│   │
+│   ├── configuration/                # Config System
+│   ├── data/                         # Data Handling
+│   │   └── dataprovider.py           # Market Data
+│   │
+│   ├── exchange/                     # Exchange Layer
+│   │   ├── exchange.py               # Base Class
+│   │   ├── binance.py                # Binance Impl
+│   │   └── ccxt_compat.py            # CCXT
+│   │
+│   ├── optimize/                     # Optimization
+│   │   ├── backtesting.py            # Backtest Engine
+│   │   └── hyperopt.py               # Hyperopt Engine
+│   │
+│   ├── persistence/                  # Database
+│   │   ├── models.py                 # SQLAlchemy
+│   │   └── trade_model.py            # Trade ORM
+│   │
+│   ├── rpc/                          # API Server
+│   │   ├── rpc.py                    # RPC Manager
+│   │   ├── api_server/
+│   │   │   ├── api_server.py         # FastAPI
+│   │   │   └── api_ws.py             # WebSocket
+│   │   └── telegram.py               # Telegram Bot
+│   │
+│   ├── strategy/                     # Strategy Framework
+│   │   ├── interface.py              # IStrategy
+│   │   └── hyper.py                  # Hyperopt Interface
+│   │
+│   └── util/                         # Utilities
+│
+├── 📊 user_data/                       # User Data
+│   ├── strategies/                   # Trading Strategies
+│   │   ├── RSI_EMA.py                # Main Strategy (74%)
+│   │   └── ... (25 strategies)
+│   ├── backtest_results/             # Backtest Output
+│   ├── hyperopt_results/             # Hyperopt Output
+│   ├── data/                         # Market Data
+│   │   └── binance/
+│   └── logs/                         # Log Files
+│
+├── ⚙️ config/                          # Configuration
+│   ├── config_binance.example.json   # Binance Template
+│   └── config_ui_test.json           # UI Test Config
+│
+├── 📦 requirements/                    # Dependencies
+│   ├── base.txt                      # Core
+│   ├── hyperopt.txt                  # Optimization
+│   ├── plot.txt                      # Plotting
+│   ├── aiml.txt                      # FreqAI/ML
+│   └── dev.txt                       # Development
+│
+├── 📜 Scripts
+│   ├── start_dual_mode.ps1           # Run Both (Backend + UI)
+│   ├── DEMO_DE_TAI.ps1               # Demo for Presentation
+│   └── backtest/                     # Backtest Scripts
+│
+├── 📚 Documentation
+│   ├── README.md                     # This File
+│   ├── README_DE_TAI.md              # Vietnamese Report
+│   └── HUONG_DAN_API_KEYS.md         # API Setup Guide
+│
+├── pyproject.toml                    # Python Config
+├── .env.example                      # Environment Template
+└── LICENSE                           # GPLv3
+```
+
+---
+
+## 🚀 Cài đặt
+
+### Yêu cầu hệ thống
+
+```
+Python >= 3.11
+Node.js >= 18.x
+npm >= 9.x
+TA-Lib (Technical Analysis Library)
+```
+
+### Bước 1: Clone Repository
+
+```bash
+git clone https://github.com/dangdoday/SE2025-9.4.git
+cd SE2025-9.4
+```
+
+### Bước 2: Setup Backend (Python)
+
+```bash
+# Tạo virtual environment
+python -m venv venv
+
+# Kích hoạt venv
+# Windows:
+venv\Scripts\activate
+# Linux/Mac:
+source venv/bin/activate
+
+# Cài đặt dependencies
+pip install -r requirements/base.txt
+pip install -r requirements/hyperopt.txt
+pip install -r requirements/plot.txt
+
+# Cài TA-Lib (Windows)
+pip install TA-Lib
+
+# Cài TA-Lib (Linux)
+sudo apt-get install ta-lib
+pip install TA-Lib
+
+# Cài TA-Lib (Mac)
+brew install ta-lib
+pip install TA-Lib
+```
+
+### Bước 3: Setup Frontend (Vue 3)
+
+```bash
+cd binancebot-ui
+npm install
+```
+
+### Bước 4: Cấu hình API Keys
+
+```bash
+# Copy template
+cp .env.example .env
+
+# Chỉnh sửa .env
+# BINANCE_API_KEY=your_key
+# BINANCE_API_SECRET=your_secret
+# DRY_RUN=true
+# DRY_RUN_WALLET=1000
+```
+
+### Bước 5: Download Data (Optional)
+
+```bash
+# Download 2 năm dữ liệu 4h
+binancebot download-data \
+  --exchange binance \
+  --pairs BTC/USDT ETH/USDT BNB/USDT OP/USDT \
+  --timeframe 4h \
+  --days 730
+```
+
+### Bước 6: Chạy hệ thống
+
+```powershell
+# Cách 1: Sử dụng PowerShell script (Windows)
+.\start_dual_mode.ps1
+
+# Cách 2: Chạy thủ công
+# Terminal 1 - Backend
+binancebot trade --config config/config_ui_test.json --strategy RSI_EMA
+
+# Terminal 2 - Frontend
+cd binancebot-ui
+npm run dev
+```
+
+**Truy cập UI:** http://localhost:3000
+
+---
+
+## 💡 Hướng dẫn sử dụng
+
+### 1. Backtesting
+
+Test chiến lược với dữ liệu lịch sử:
+
+```bash
+binancebot backtesting \
+  --strategy RSI_EMA \
+  --config config/config_ui_test.json \
+  --timeframe 4h \
+  --timerange 20230101-20251201
+```
+
+**Output:**
+```
+Result for strategy RSI_EMA
+============================================
+| Total Profit         | 742.73 USDT (74.27%)|
+| Win Rate             | 73.42% (58/79)      |
+| Max Drawdown         | 14.65%              |
+| Sharpe Ratio         | 2.31                |
+| Avg Trade Duration   | 13h 30m             |
+============================================
+```
+
+### 2. Hyperparameter Optimization
+
+Tối ưu tham số tự động:
+
+```bash
+binancebot hyperopt \
+  --strategy RSI_EMA \
+  --config config/config_ui_test.json \
+  --timeframe 4h \
+  --timerange 20230101-20251201 \
+  --epochs 2000 \
+  --hyperopt-loss SharpeHyperOptLoss \
+  --spaces buy sell \
+  --min-trades 20 \
+  -j 8
+```
+
+**Optimization Spaces:**
+- `buy` - Entry parameters (RSI < 30)
+- `sell` - Exit parameters (RSI > 70)
+- `roi` - ROI table
+- `stoploss` - Stop loss %
+- `trailing` - Trailing stop
+
+### 3. Paper Trading (Dry-run)
+
+Mô phỏng giao dịch với tiền ảo:
+
+```bash
+binancebot trade \
+  --config config/config_ui_test.json \
+  --strategy RSI_EMA \
+  --dry-run
+```
+
+**Features:**
+- Virtual wallet: 1000 USDT
+- Real market data
+- Simulated orders
+- No real money risk
+
+### 4. Live Trading ⚠️
+
+**CẢNH BÁO: Sử dụng tiền thật!**
+
+```bash
+# Đảm bảo dry_run: false trong config
+binancebot trade \
+  --config config/config_binance.json \
+  --strategy RSI_EMA
+```
+
+**Safety Checklist:**
+- ✅ Tested thoroughly với backtest
+- ✅ Optimized với hyperopt
+- ✅ Practiced với dry-run
+- ✅ Start với stake nhỏ (30 USDT)
+- ✅ Max 1-3 open trades
+- ✅ API keys: trade only, no withdrawal
+
+### 5. Frontend Dashboard
+
+**Login:**
+- URL: http://localhost:3000
+- Username: `admin` (bất kỳ)
+- Password: `123456` (bất kỳ, >= 6 ký tự)
+
+**Features:**
+- **Dashboard:** Balance, P&L, Win Rate
+- **Live Trading:** Charts, Indicators, Trades
+- **Backtest:** Results, Metrics, Charts
+- **Hyperopt:** Monitor optimization progress
+- **Settings:** API Keys, Strategy params
+
+---
+
+## 📊 Chiến lược RSI_EMA
+
+### Overview
+
+**File:** `user_data/strategies/RSI_EMA.py`
+
+**Concept:** Kết hợp RSI (momentum) với EMA (trend) để tìm điểm vào có xác suất cao.
+
+### Indicators
+
+```python
+# RSI - Relative Strength Index (14 periods)
+dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
+
+# EMA - Exponential Moving Average
+dataframe['ema_fast'] = ta.EMA(dataframe, timeperiod=12)
+dataframe['ema_slow'] = ta.EMA(dataframe, timeperiod=26)
+```
+
+### Entry Signal (Buy)
+
+```python
+(dataframe['rsi'] < 30) &                    # Oversold
+(dataframe['ema_fast'] > dataframe['ema_slow']) &  # Uptrend
+(dataframe['volume'] > 0)                    # Valid volume
+```
+
+**Điều kiện:**
+1. RSI < 30 → Oversold (giá quá thấp)
+2. EMA Fast > EMA Slow → Uptrend (xu hướng tăng)
+3. Volume > 0 → Giao dịch hợp lệ
+
+### Exit Signal (Sell)
+
+```python
+(dataframe['rsi'] > 70) |                    # Overbought
+(dataframe['ema_fast'] < dataframe['ema_slow'])   # Downtrend
+```
+
+**Điều kiện:**
+1. RSI > 70 → Overbought (giá quá cao) HOẶC
+2. EMA Fast < EMA Slow → Downtrend (xu hướng giảm)
+
+### Risk Management
+
+```python
+# Stop Loss
+stoploss = -0.12  # -12% max loss
+
+# ROI Targets
+minimal_roi = {
+    "0": 0.20,    # 20% immediately
+    "30": 0.15,   # 15% after 30min
+    "60": 0.10,   # 10% after 1h
+    "120": 0.05   # 5% after 2h
+}
+
+# Position Sizing (Kelly Criterion)
+# Dynamically adjusts stake based on win rate
+```
+
+### Performance (2023-2025)
+
+| Metric | Value |
+|--------|-------|
+| Total Profit | +742.73 USDT (+74.27%) |
+| Win Rate | 73.42% (58/79) |
+| Max Drawdown | 14.65% |
+| Sharpe Ratio | 2.31 |
+| Avg Duration | 13h 30m |
+| Best Trade | +98.65 USDT (OP/USDT) |
+| Worst Trade | -43.21 USDT (LINK/USDT) |
+
+### Top Pairs
+
+| Pair | Profit | Trades | Win Rate |
+|------|--------|--------|----------|
+| OP/USDT | +98.65 | 5 | 100% |
+| XAI/USDT | +87.32 | 4 | 100% |
+| MINA/USDT | +81.47 | 6 | 83.3% |
+| IMX/USDT | +73.28 | 7 | 85.7% |
+| FET/USDT | +65.19 | 8 | 75% |
+
+---
+
+## 🎨 Frontend UI
+
+### Tech Stack
+
+```
+Vue 3 (Composition API)
+TypeScript
+Vite (Build tool)
+PrimeVue (UI Library)
+ECharts (Charts)
+TailwindCSS (Styling)
+Pinia (State Management)
+Vue Router (Routing)
+```
+
+### Pages
+
+#### 1. Dashboard (`/dashboard`)
+
+**Features:**
+- Balance display (USDT)
+- Profit/Loss chart
+- Win rate metrics
+- Top performing pairs
+- Recent trades table
+
+#### 2. Live Trading (`/trade`)
+
+**Features:**
+- Candlestick chart (ECharts)
+- RSI indicator overlay
+- EMA lines (fast/slow)
+- Open positions table
+- Trade history
+- Quick close buttons
+
+#### 3. Backtest Results (`/backtest`)
+
+**Features:**
+- Equity curve chart
+- Drawdown chart
+- Performance metrics
+- Exit reasons pie chart
+- Per-pair table
+
+#### 4. Hyperopt Monitor (`/hyperopt`)
+
+**Features:**
+- Real-time progress
+- Best parameters display
+- Optimization logs (mock)
+- Top 10 results
+
+#### 5. Settings (`/settings`)
+
+**Tabs:**
+- API Keys
+- Strategy Params
+- Risk Management
+- Preferences
+
+---
+
+## ⚙️ Cấu hình
+
+### Main Config
+
+**File:** `config/config_ui_test.json`
+
+```json
+{
+  "max_open_trades": 10,
+  "stake_currency": "USDT",
+  "stake_amount": 30,
+  "dry_run": true,
+  "dry_run_wallet": 1000,
+  
+  "exchange": {
+    "name": "binance",
+    "key": "",
+    "secret": "",
+    "pair_whitelist": [
+      "BTC/USDT", "ETH/USDT", "BNB/USDT",
+      "OP/USDT", "XAI/USDT", "MINA/USDT"
+    ]
+  },
+  
+  "api_server": {
+    "enabled": true,
+    "listen_ip_address": "127.0.0.1",
+    "listen_port": 8080,
+    "CORS_origins": ["http://localhost:3000"]
+  }
+}
+```
+
+### Environment Variables
+
+**File:** `.env`
+
+```bash
+BINANCE_API_KEY=your_api_key
+BINANCE_API_SECRET=your_secret
+DRY_RUN=true
+DRY_RUN_WALLET=1000
+API_SERVER_PORT=8080
+```
+
+---
+
+## 🧪 Testing
+
+### Backend Tests
+
+```bash
+pip install -r requirements/dev.txt
+pytest
+pytest --cov=binancebot tests/
+```
+
+### Frontend Tests
+
+```bash
+cd binancebot-ui
+npm run test:unit
+npm run type-check
+npm run lint
+```
+
+---
+
+## 🛠️ Development
+
+### Commit Convention
+
+```
+<type>(<scope>): <subject>
+
+Types: feat, fix, docs, style, refactor, test, chore
+```
+
+**Examples:**
+```bash
+git commit -m "feat(strategy): add RSI_EMA with kelly criterion"
+git commit -m "fix(ui): resolve WebSocket timeout"
+git commit -m "docs(readme): update installation guide"
+```
+
+### Adding New Strategy
+
+1. Copy template:
+```bash
+cp user_data/strategies/SampleStrategy.py user_data/strategies/MyStrategy.py
+```
+
+2. Edit strategy logic
+
+3. Test:
+```bash
+binancebot backtesting --strategy MyStrategy
+```
+
+4. Optimize:
+```bash
+binancebot hyperopt --strategy MyStrategy --epochs 1000
+```
+
+---
+
+## 📄 License
+
+GNU General Public License v3.0 - See [LICENSE](LICENSE)
+
+**Third-party:**
+- FreqTrade: GPLv3
+- Vue.js: MIT
+- PrimeVue: MIT
+- ECharts: Apache 2.0
+
+---
+
+## 🙏 Credits
+
+Based on [FreqTrade](https://github.com/freqtrade/freqtrade) - Open source crypto trading bot.
+
+**Technologies:**
+- Python, FastAPI, SQLAlchemy, CCXT, Pandas, TA-Lib
+- Vue 3, TypeScript, PrimeVue, ECharts, TailwindCSS
+
+---
+
+## ⚠️ Disclaimer
+
+**Cryptocurrency trading involves significant risk.**
+
+- ⚠️ You can lose all your capital
+- ⚠️ Past performance ≠ future results
+- ⚠️ Educational purposes only
+- ⚠️ Not financial advice
+- ⚠️ Use at your own risk
+
+**Recommendations:**
+- ✅ Test on Testnet first
+- ✅ Start with paper trading
+- ✅ Use money you can afford to lose
+- ✅ Set strict stop-losses
+- ✅ Monitor regularly
+
+**Liability:** Developers are NOT responsible for any financial losses.
+
+---
+
+## 📞 Contact
+
+- **Repository:** https://github.com/dangdoday/SE2025-9.4
+- **Course:** Software Engineering (SE2025)
+- **Group:** 9.4
+- **Issues:** [GitHub Issues](https://github.com/dangdoday/SE2025-9.4/issues)
+
+---
+
+<div align="center">
+
+### ⭐ Star this project if you find it useful!
+
+**Made with ❤️ by SE2025 Group 9.4**
+
+[Report Bug](https://github.com/dangdoday/SE2025-9.4/issues) • [Request Feature](https://github.com/dangdoday/SE2025-9.4/issues)
+
+</div>
