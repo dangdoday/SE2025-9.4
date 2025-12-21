@@ -38,6 +38,10 @@ COPY backend/ ./backend/
 COPY config/ ./config/
 COPY user_data/ ./user_data/
 COPY pyproject.toml .
+COPY setup.py .
+
+# Install the package
+RUN pip install -e .
 
 # Create necessary directories
 RUN mkdir -p /app/data /app/user_data/logs
