@@ -40,8 +40,8 @@ COPY user_data/ ./user_data/
 COPY pyproject.toml .
 COPY setup.py .
 
-# Install the package
-RUN pip install -e .
+# Set Python path to include backend directory
+ENV PYTHONPATH=/app:/app/backend
 
 # Create necessary directories
 RUN mkdir -p /app/data /app/user_data/logs
