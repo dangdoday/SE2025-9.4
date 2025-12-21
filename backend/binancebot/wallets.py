@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Literal, NamedTuple
 
-from binancebot.constants import UNLIMITED_STAKE_AMOUNT, Config, IntOrInf
+from binancebot.constants import UNLIMITED_STAKE_AMOUNT, Config, EntryExecuteMode, IntOrInf
 from binancebot.enums import RunMode, TradingMode
 from binancebot.exceptions import DependencyException
 from binancebot.exchange import Exchange
@@ -381,6 +381,7 @@ class Wallets:
         min_stake_amount: float | None,
         max_stake_amount: float,
         trade_amount: float | None,
+        mode: EntryExecuteMode = "initial",
     ):
         if not stake_amount or isinstance(stake_amount, str) or stake_amount <= 0:
             self._local_log(
@@ -407,7 +408,7 @@ class Wallets:
                 f"Stake amount for pair {pair} is too small "
                 f"({stake_amount} < {min_stake_amount}), adjusting to {min_stake_amount}."
             )
-            if stake_amount * 1.3 < min_stake_amount:
+            if mode != "force_entry" and stake_amount * 1.3 < min_stake_amount:
                 # Top-cap stake-amount adjustments to +30%.
                 self._local_log(
                     f"Adjusted stake amount for pair {pair} is more than 30% bigger than "

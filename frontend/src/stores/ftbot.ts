@@ -202,6 +202,14 @@ export function createBotSubStore(botId: string, botName: string) {
       },
       logout() {
         loginInfo.logout();
+        // Reset local state to prevent data leakage to next user
+        this.$reset();
+        this.trades = [];
+        this.openTrades = [];
+        this.balance = {} as BalanceInterface;
+        this.profitAll = {} as AllProfitStats;
+        this.performanceStats = [];
+        this.lastLogs = [];
       },
       getLoginInfo() {
         return loginInfo.getLoginInfo();
@@ -1162,7 +1170,9 @@ export function createBotSubStore(botId: string, botName: string) {
             if (pair === this.plotPair) {
               // Reload pair candles
               const plotStore = usePlotConfigStore();
-              this.getPairCandles({ pair, timeframe, columns: plotStore.usedColumns });
+              // Access the getter with type assertion to avoid TS inference issues
+              const columns = (plotStore as any).usedColumns;
+              this.getPairCandles({ pair, timeframe, columns });
             }
             break;
           }

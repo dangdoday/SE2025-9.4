@@ -1,10 +1,15 @@
+<script setup lang="ts">
+</script>
+
 <template>
-  <div>
-    <h1 class="mb-5">404 Error.</h1>
-    <p class="h4">Ahhhhhhhh! The page you are looking for does not exist.</p>
-    <p>
-      Don't worry, you can head back to
-      <RouterLink to="/"> <span>the main page</span> </RouterLink>.
-    </p>
+  <div class="min-h-[60vh] flex items-center justify-center">
+    <div class="text-center">
+      <div class="text-8xl font-bold text-primary mb-4">404</div>
+      <h1 class="text-2xl font-bold text-white mb-2">Page Not Found</h1>
+      <p class="text-gray-500 mb-6">The page you're looking for doesn't exist.</p>
+      <router-link to="/" class="btn btn-primary">
+        ← Go Home
+      </router-link>
+    </div>
   </div>
 </template>

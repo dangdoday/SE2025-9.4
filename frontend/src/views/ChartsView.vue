@@ -1,167 +1,96 @@
 <script setup lang="ts">
-import { MarginMode, TradingMode } from '@/types';
-import type { ExchangeSelection, Markets, MarketsPayload, PairHistoryPayload } from '@/types';
+import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { useBotStore } from '@/stores/botStore'
+import CandleChartContainer from '@/components/charts/CandleChartContainer.vue'
 
-const botStore = useBotStore();
-const chartStore = useChartConfigStore();
+const route = useRoute()
+const botStore = useBotStore()
 
-const finalTimeframe = computed<string>(() => {
-  return botStore.activeBot.isWebserverMode
-    ? chartStore.selectedTimeframe || botStore.activeBot.strategy.timeframe || ''
-    : botStore.activeBot.timeframe;
-});
+// Get pair from URL query if provided
+const initialPair = (route.query.pair as string) || 'BTC/USDT'
+const selectedPair = ref(initialPair)
+const selectedTimeframe = ref('4h')
 
-const availablePairs = computed<string[]>(() => {
-  if (botStore.activeBot.isWebserverMode) {
-    if (chartStore.useLiveData) {
-      return Object.keys(markets.value?.markets || {}).sort() || [];
+const timeframes = ['1m', '5m', '15m', '1h', '4h', '1d', '1w']
+
+// Default pairs list (fallback when API is not available)
+const defaultPairs = [
+  'BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'XRP/USDT',
+  'ADA/USDT', 'AVAX/USDT', 'DOGE/USDT', 'DOT/USDT', 'LINK/USDT',
+  'ATOM/USDT', 'NEAR/USDT', 'OP/USDT', 'ARB/USDT', 'SUI/USDT',
+  'SEI/USDT', 'INJ/USDT', 'PEPE/USDT', 'SHIB/USDT', 'FLOKI/USDT',
+  'APT/USDT', 'TIA/USDT', 'FET/USDT', 'IMX/USDT', 'GRT/USDT',
+  'FIL/USDT', 'RUNE/USDT', 'TAO/USDT', 'WIF/USDT', 'BONK/USDT',
+  'MINA/USDT', 'ZK/USDT', 'JUP/USDT', 'PYTH/USDT', 'ONDO/USDT',
+  'MANTA/USDT', 'AEVO/USDT', 'DYM/USDT', 'SAGA/USDT', 'XAI/USDT',
+  'TRB/USDT', 'EGLD/USDT'
+]
+
+// Get pairs - try from API, fallback to default
+const pairs = ref<string[]>(defaultPairs)
+
+async function loadPairs() {
+  try {
+    await botStore.fetchWhitelist()
+    if (botStore.whitelist && botStore.whitelist.length > 0) {
+      pairs.value = botStore.whitelist
     }
-    if (finalTimeframe.value && finalTimeframe.value !== '') {
-      const tf = finalTimeframe.value;
-      return botStore.activeBot.pairlistWithTimeframe
-        .filter(([_, timeframe]) => {
-          // console.log(pair, timeframe, tf);
-          return timeframe === tf;
-        })
-        .map(([pair]) => pair);
-    }
-    return botStore.activeBot.pairlist;
-  }
-  return botStore.activeBot.whitelist;
-});
-
-onMounted(() => {
-  if (botStore.activeBot.isWebserverMode) {
-    // Get available pairs for all timeframes
-    botStore.activeBot.getAvailablePairs({});
-  } else if (!botStore.activeBot.whitelist || botStore.activeBot.whitelist.length === 0) {
-    botStore.activeBot.getWhitelist();
-  }
-});
-
-function refreshOHLCV(pair: string, columns: string[]) {
-  console.log('Refreshing OHLCV for pair:', pair, finalTimeframe.value, 'with columns:', columns);
-  if (botStore.activeBot.isWebserverMode && finalTimeframe.value) {
-    const payload: PairHistoryPayload = {
-      pair: pair,
-      timeframe: finalTimeframe.value,
-      timerange: chartStore.timerange,
-      strategy: chartStore.strategy,
-      // freqaimodel: freqaiModel.value,
-      columns: columns,
-      live_mode: chartStore.useLiveData,
-    };
-    if (exchange.value.customExchange) {
-      payload.exchange = exchange.value.selectedExchange.exchange;
-      payload.trading_mode = exchange.value.selectedExchange.trade_mode.trading_mode;
-      payload.margin_mode = exchange.value.selectedExchange.trade_mode.margin_mode;
-    }
-    botStore.activeBot.getPairHistory(payload);
-  } else {
-    botStore.activeBot.getPairCandles({
-      pair: pair,
-      timeframe: finalTimeframe.value,
-      columns: columns,
-    });
+  } catch (error) {
+    console.log('Using default pairs list')
+    pairs.value = defaultPairs
   }
 }
-const exchange = ref<{
-  customExchange: boolean;
-  selectedExchange: ExchangeSelection;
-}>({
-  customExchange: false,
-  selectedExchange: {
-    exchange: botStore.activeBot.botState.exchange,
-    trade_mode: {
-      margin_mode: MarginMode.NONE,
-      trading_mode: TradingMode.SPOT,
-    },
-  },
-});
 
-const markets = ref<Markets | null>(null);
-watch(
-  () => chartStore.useLiveData,
-  async () => {
-    if (botStore.activeBot.isWebserverMode && chartStore.useLiveData) {
-      const payload: MarketsPayload = {};
-      if (exchange.value.customExchange) {
-        payload.exchange = exchange.value.selectedExchange.exchange;
-        payload.trading_mode = exchange.value.selectedExchange.trade_mode.trading_mode;
-        payload.margin_mode = exchange.value.selectedExchange.trade_mode.margin_mode;
-      }
+// Get all trades (open + closed) for chart markers
+const allTrades = computed(() => {
+  return [...botStore.openTrades, ...botStore.closedTrades]
+})
 
-      markets.value = await botStore.activeBot.getMarkets(payload);
-    }
-  },
-  {
-    immediate: true,
-  },
-);
+onMounted(() => {
+  loadPairs()
+  // Load trades for chart markers
+  botStore.fetchTrades()
+})
 </script>
 
 <template>
-  <div class="flex flex-col h-full">
-    <!-- <div v-if="isWebserverMode" class="me-auto ms-3"> -->
-    <!-- Currently only available in Webserver mode -->
-    <!-- <b-form-checkbox v-model="historicView">HistoricData</b-form-checkbox> -->
-    <!-- </div> -->
-    <div v-if="botStore.activeBot.isWebserverMode" class="md:mx-3 mt-2 px-1">
-      <Panel header="Settings" toggleable>
-        <div
-          class="mb-2 border dark:border-surface-700 border-surface-300 rounded-md p-2 text-start"
-        >
-          <div class="flex flex-row gap-5">
-            <BaseCheckbox v-model="exchange.customExchange" class="mb-2">
-              Custom Exchange
-            </BaseCheckbox>
-            <span v-show="!exchange.customExchange">
-              Current Exchange:
-              {{ botStore.activeBot.botState.exchange }}
-              {{ botStore.activeBot.botState.trading_mode }}
-            </span>
-          </div>
-          <Transition name="fade">
-            <ExchangeSelect v-show="exchange.customExchange" v-model="exchange.selectedExchange" />
-          </Transition>
-        </div>
-        <div class="grid grid-cols-3 md:grid-cols-5 mx-1 gap-1 md:gap-2">
-          <div class="text-start md:me-1 col-span-2">
-            <span>Strategy</span>
-            <StrategySelect v-model="chartStore.strategy" class="mt-1 mb-1"></StrategySelect>
-            <BaseCheckbox
-              v-if="botStore.activeBot.botFeatures.chartLiveData"
-              v-model="chartStore.useLiveData"
-              class="align-self-center"
-              title="Use live data from the exchange. Only use if you don't have data downloaded locally."
-            >
-              Use Live Data
-            </BaseCheckbox>
-          </div>
-          <div class="flex flex-col text-start">
-            <span>Timeframe</span>
-            <TimeframeSelect v-model="chartStore.selectedTimeframe" class="mt-1" />
-          </div>
-          <TimeRangeSelect
-            v-model="chartStore.timerange"
-            class="col-span-3 md:col-span-2"
-          ></TimeRangeSelect>
-        </div>
-      </Panel>
+  <div class="space-y-6 fade-in">
+    <!-- Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-white">📊 Charts</h1>
+        <p class="text-gray-500 text-sm">Xem biểu đồ giá và chỉ báo kỹ thuật</p>
+      </div>
+      
+      <!-- Controls -->
+      <div class="flex items-center gap-3">
+        <select v-model="selectedPair" class="input w-56">
+          <option v-for="pair in pairs" :key="pair" :value="pair">{{ pair }}</option>
+        </select>
+        <select v-model="selectedTimeframe" class="input w-24">
+          <option v-for="tf in timeframes" :key="tf" :value="tf">{{ tf }}</option>
+        </select>
+        <button @click="loadPairs" class="btn btn-outline text-sm">
+          🔄
+        </button>
+      </div>
     </div>
 
-    <div class="md:mx-2 mt-2 pb-1 h-full">
-      <CandleChartContainer
-        :available-pairs="availablePairs"
-        :historic-view="botStore.activeBot.isWebserverMode"
-        :timeframe="finalTimeframe"
-        :trades="botStore.activeBot.allTrades"
-        :timerange="botStore.activeBot.isWebserverMode ? chartStore.timerange : undefined"
-        :strategy="botStore.activeBot.isWebserverMode ? chartStore.strategy : undefined"
-        :plot-config-modal="false"
-        @refresh-data="refreshOHLCV"
-      >
-      </CandleChartContainer>
+    <!-- Info -->
+    <div class="flex items-center gap-4 text-sm text-gray-400">
+      <span class="text-primary font-medium">{{ selectedPair }}</span>
+      <span>⏱️ {{ selectedTimeframe }}</span>
+      <span>{{ pairs.length }} cặp tiền</span>
+    </div>
+
+    <!-- Chart -->
+    <div class="card" style="height: calc(100vh - 260px); min-height: 500px;">
+      <CandleChartContainer 
+        :pair="selectedPair" 
+        :timeframe="selectedTimeframe"
+        :trades="allTrades"
+      />
     </div>
   </div>
 </template>

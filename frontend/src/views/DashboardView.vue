@@ -1,227 +1,175 @@
 <script setup lang="ts">
-import type { GridItemData } from '@/types';
+import { onMounted, onUnmounted, onActivated, computed, ref } from 'vue'
+import { useBotStore } from '@/stores/botStore'
+import { botApi } from '@/api/api'
+import BotStatus from '@/components/ftbot/BotStatus.vue'
+import BotBalance from '@/components/ftbot/BotBalance.vue'
+import BotProfit from '@/components/ftbot/BotProfit.vue'
+import TradeList from '@/components/ftbot/TradeList.vue'
+import PeriodBreakdown from '@/components/ftbot/PeriodBreakdown.vue'
 
-const botStore = useBotStore();
+const botStore = useBotStore()
+const isRefreshing = ref(false)
+let refreshInterval: number | null = null
 
-const layoutStore = useLayoutStore();
-const currentBreakpoint = ref('');
-
-function breakpointChanged(newBreakpoint: string) {
-  // console.log('breakpoint:', newBreakpoint);
-  currentBreakpoint.value = newBreakpoint;
-}
-const isResizableLayout = computed(() =>
-  ['', 'sm', 'md', 'lg', 'xl'].includes(currentBreakpoint.value),
-);
-const isLayoutLocked = computed(() => {
-  return layoutStore.layoutLocked || !isResizableLayout.value;
-});
-
-const gridLayoutData = computed((): GridItemData[] => {
-  if (isResizableLayout.value) {
-    return layoutStore.dashboardLayout;
-  }
-  return [...layoutStore.getDashboardLayoutSm];
-});
-
-function layoutUpdatedEvent(newLayout) {
-  if (isResizableLayout.value) {
-    console.log('newlayout', newLayout);
-    console.log('saving dashboard');
-    layoutStore.dashboardLayout = newLayout;
+async function refresh() {
+  if (isRefreshing.value) return
+  isRefreshing.value = true
+  try {
+    await botStore.refreshAll()
+  } catch (e) {
+    console.error('Refresh error:', e)
+  } finally {
+    isRefreshing.value = false
   }
 }
 
-const gridLayoutDaily = computed((): GridItemData => {
-  return findGridLayout(gridLayoutData.value, DashboardLayout.dailyChart);
-});
+function startAutoRefresh() {
+  if (!refreshInterval) {
+    refreshInterval = window.setInterval(refresh, 10000)
+  }
+}
 
-const gridLayoutBotComparison = computed((): GridItemData => {
-  return findGridLayout(gridLayoutData.value, DashboardLayout.botComparison);
-});
+function stopAutoRefresh() {
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+    refreshInterval = null
+  }
+}
 
-const gridLayoutAllOpenTrades = computed((): GridItemData => {
-  return findGridLayout(gridLayoutData.value, DashboardLayout.allOpenTrades);
-});
-const gridLayoutAllClosedTrades = computed((): GridItemData => {
-  return findGridLayout(gridLayoutData.value, DashboardLayout.allClosedTrades);
-});
+onMounted(() => {
+  refresh()
+  startAutoRefresh()
+})
 
-const gridLayoutCumChart = computed((): GridItemData => {
-  return findGridLayout(gridLayoutData.value, DashboardLayout.cumChartChart);
-});
-const gridLayoutProfitDistribution = computed((): GridItemData => {
-  return findGridLayout(gridLayoutData.value, DashboardLayout.profitDistributionChart);
-});
-const gridLayoutTradesLogChart = computed((): GridItemData => {
-  return findGridLayout(gridLayoutData.value, DashboardLayout.tradesLogChart);
-});
+// Called when component is activated from keep-alive cache
+onActivated(() => {
+  refresh()
+  startAutoRefresh()
+})
 
-const responsiveGridLayouts = computed(() => {
-  return {
-    sm: layoutStore.getDashboardLayoutSm,
-  };
-});
+onUnmounted(() => {
+  stopAutoRefresh()
+})
 
-onMounted(async () => {
-  botStore.allGetDaily({ timescale: 30 });
-  // botStore.activeBot.getTrades();
-  botStore.activeBot.getOpenTrades();
-  botStore.activeBot.getProfit();
-});
+const profitClass = computed(() => {
+  const profit = botStore.totalProfit
+  if (profit > 0) return 'text-success'
+  if (profit < 0) return 'text-danger'
+  return 'text-white'
+})
 </script>
 
 <template>
-  <GridLayout
-    class="h-full w-full"
-    style="padding: 1px"
-    :row-height="50"
-    :layout="gridLayoutData"
-    :vertical-compact="false"
-    :margin="[2, 2]"
-    :responsive-layouts="responsiveGridLayouts"
-    :is-resizable="!isLayoutLocked"
-    :is-draggable="!isLayoutLocked"
-    :responsive="true"
-    :prevent-collision="true"
-    :cols="{ lg: 12, md: 12, sm: 12, xs: 4, xxs: 2 }"
-    :col-num="12"
-    @layout-updated="layoutUpdatedEvent"
-    @update:breakpoint="breakpointChanged"
-  >
-    <template #default="{ gridItemProps }">
-      <GridItem
-        v-bind="gridItemProps"
-        :i="gridLayoutDaily.i"
-        :x="gridLayoutDaily.x"
-        :y="gridLayoutDaily.y"
-        :w="gridLayoutDaily.w"
-        :h="gridLayoutDaily.h"
-        :min-w="3"
-        :min-h="4"
-        drag-allow-from=".drag-header"
-      >
-        <DraggableContainer :header="`Profit over time ${botStore.botCount > 1 ? 'combined' : ''}`">
-          <PeriodBreakdown multi-bot-view />
-        </DraggableContainer>
-      </GridItem>
-      <GridItem
-        v-bind="gridItemProps"
-        :i="gridLayoutBotComparison.i"
-        :x="gridLayoutBotComparison.x"
-        :y="gridLayoutBotComparison.y"
-        :w="gridLayoutBotComparison.w"
-        :h="gridLayoutBotComparison.h"
-        :min-w="3"
-        :min-h="4"
-        drag-allow-from=".drag-header"
-      >
-        <DraggableContainer header="Bot comparison">
-          <BotComparisonList />
-        </DraggableContainer>
-      </GridItem>
-      <GridItem
-        v-bind="gridItemProps"
-        :i="gridLayoutAllOpenTrades.i"
-        :x="gridLayoutAllOpenTrades.x"
-        :y="gridLayoutAllOpenTrades.y"
-        :w="gridLayoutAllOpenTrades.w"
-        :h="gridLayoutAllOpenTrades.h"
-        :min-w="3"
-        :min-h="4"
-        drag-allow-from=".drag-header"
-      >
-        <DraggableContainer>
-          <template #header>
-            <div class="flex justify-content-center">
-              Open Trades
-              <InfoBox
-                class="ms-2"
-                hint="Open trades of all selected bots. Click on a trade to go to the trade page for that trade/bot."
-              />
-            </div>
-          </template>
-          <TradeList active-trades :trades="botStore.allOpenTradesSelectedBots" multi-bot-view />
-        </DraggableContainer>
-      </GridItem>
-      <GridItem
-        v-bind="gridItemProps"
-        :i="gridLayoutCumChart.i"
-        :x="gridLayoutCumChart.x"
-        :y="gridLayoutCumChart.y"
-        :w="gridLayoutCumChart.w"
-        :h="gridLayoutCumChart.h"
-        :min-w="3"
-        :min-h="4"
-        drag-allow-from=".drag-header"
-      >
-        <DraggableContainer header="Cumulative Profit">
-          <CumProfitChart
-            :trades="botStore.allTradesSelectedBots"
-            :open-trades="botStore.allOpenTradesSelectedBots"
-            :show-title="false"
-          />
-        </DraggableContainer>
-      </GridItem>
-      <GridItem
-        v-bind="gridItemProps"
-        :i="gridLayoutAllClosedTrades.i"
-        :x="gridLayoutAllClosedTrades.x"
-        :y="gridLayoutAllClosedTrades.y"
-        :w="gridLayoutAllClosedTrades.w"
-        :h="gridLayoutAllClosedTrades.h"
-        :min-w="3"
-        :min-h="4"
-        drag-allow-from=".drag-header"
-      >
-        <DraggableContainer>
-          <template #header>
-            <div class="flex justify-content-center">
-              Closed Trades
-              <InfoBox
-                class="ms-2"
-                hint="Closed trades for all selected bots. Click on a trade to go to the trade page for that trade/bot."
-              />
-            </div>
-          </template>
-          <TradeList
-            :active-trades="false"
-            show-filter
-            :trades="botStore.allClosedTradesSelectedBots"
-            multi-bot-view
-          />
-        </DraggableContainer>
-      </GridItem>
-      <GridItem
-        v-bind="gridItemProps"
-        :i="gridLayoutProfitDistribution.i"
-        :x="gridLayoutProfitDistribution.x"
-        :y="gridLayoutProfitDistribution.y"
-        :w="gridLayoutProfitDistribution.w"
-        :h="gridLayoutProfitDistribution.h"
-        :min-w="3"
-        :min-h="4"
-        drag-allow-from=".drag-header"
-      >
-        <DraggableContainer header="Profit Distribution">
-          <ProfitDistributionChart :trades="botStore.allTradesSelectedBots" :show-title="false" />
-        </DraggableContainer>
-      </GridItem>
-      <GridItem
-        v-bind="gridItemProps"
-        :i="gridLayoutTradesLogChart.i"
-        :x="gridLayoutTradesLogChart.x"
-        :y="gridLayoutTradesLogChart.y"
-        :w="gridLayoutTradesLogChart.w"
-        :h="gridLayoutTradesLogChart.h"
-        :min-w="3"
-        :min-h="4"
-        drag-allow-from=".drag-header"
-      >
-        <DraggableContainer header="Trades Log">
-          <TradesLogChart :trades="botStore.allTradesSelectedBots" :show-title="false" />
-        </DraggableContainer>
-      </GridItem>
-    </template>
-  </GridLayout>
+  <div class="space-y-6 fade-in">
+    <!-- Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-white">Dashboard</h1>
+        <p class="text-gray-500 text-sm mt-1">Live Trading on Binance Spot</p>
+      </div>
+      <div class="flex gap-2">
+        <button @click="botStore.refreshAll()" :disabled="isRefreshing" class="btn btn-outline">
+          🔄 Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Total Balance -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-gray-500 text-sm">Total Balance</span>
+          <span class="text-primary">💰</span>
+        </div>
+        <div class="stat-value text-primary">
+          {{ botStore.totalBalance.toFixed(2) }}
+        </div>
+        <div class="text-xs text-gray-500 mt-1">USDT</div>
+      </div>
+
+      <!-- Total Profit -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-gray-500 text-sm">Total Profit</span>
+          <span class="text-success">📈</span>
+        </div>
+        <div class="stat-value" :class="profitClass">
+          {{ botStore.totalProfit >= 0 ? '+' : '' }}{{ botStore.totalProfit.toFixed(2) }}
+        </div>
+        <div class="text-xs text-gray-500 mt-1">USDT</div>
+      </div>
+
+      <!-- Win Rate -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-gray-500 text-sm">Win Rate</span>
+          <span class="text-success">🎯</span>
+        </div>
+        <div class="stat-value text-success">
+          {{ botStore.winRate }}%
+        </div>
+        <div class="text-xs text-gray-500 mt-1">of closed trades</div>
+      </div>
+
+      <!-- Open Trades -->
+      <div class="card">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-gray-500 text-sm">Open Trades</span>
+          <span class="text-primary">📊</span>
+        </div>
+        <div class="stat-value text-white">
+          {{ botStore.openTradeCount }}
+        </div>
+        <div class="text-xs text-gray-500 mt-1">active positions</div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Left Column - Charts -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- Profit Over Time -->
+        <div class="card">
+          <div class="card-header">
+            <span>📈 Profit Over Time</span>
+          </div>
+          <PeriodBreakdown />
+        </div>
+
+        <!-- Open Trades -->
+        <div class="card">
+          <div class="card-header">
+            <span>💹 Open Trades</span>
+            <span class="badge badge-warning">{{ botStore.openTradeCount }}</span>
+          </div>
+          <TradeList :trades="botStore.openTrades" :is-open="true" />
+        </div>
+      </div>
+
+      <!-- Right Column - Status & Info -->
+      <div class="space-y-6">
+        <!-- Bot Status -->
+        <BotStatus />
+
+        <!-- Balance -->
+        <BotBalance />
+
+        <!-- Quick Profit -->
+        <BotProfit />
+      </div>
+    </div>
+
+    <!-- Recent Closed Trades -->
+    <div class="card">
+      <div class="card-header">
+        <span>📋 Recent Closed Trades</span>
+        <router-link to="/trade" class="text-primary text-sm hover:underline">
+          View All →
+        </router-link>
+      </div>
+      <TradeList :trades="botStore.closedTrades.slice(0, 10)" :is-open="false" />
+    </div>
+  </div>
 </template>

@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -9,7 +10,7 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi.security.http import HTTPBasic, HTTPBasicCredentials
 
 from binancebot.rpc.api_server.api_schemas import AccessAndRefreshToken, AccessToken
-from binancebot.rpc.api_server.deps import get_api_config
+from binancebot.rpc.api_server.deps import get_api_config, get_config
 
 
 logger = logging.getLogger(__name__)
@@ -19,11 +20,52 @@ ALGORITHM = "HS256"
 router_login = APIRouter()
 
 
+def HashPassword(password: str) -> str:
+    """Hash a password for storing."""
+    salt = secrets.token_hex(16)
+    key = hashlib.pbkdf2_hmac(
+        'sha256', 
+        password.encode('utf-8'), 
+        salt.encode('utf-8'), 
+        100000
+    ).hex()
+    return f"pbkdf2_sha256$100000${salt}${key}"
+
+
+def VerifyPassword(plain_password: str, hashed_password: str) -> bool:
+    """Verify a hashed password."""
+    try:
+        if not hashed_password.startswith("pbkdf2_sha256$"):
+            # Legacy plain text support
+            return secrets.compare_digest(plain_password, hashed_password)
+            
+        algorithm, iterations, salt, key = hashed_password.split('$')
+        iterations = int(iterations)
+        new_key = hashlib.pbkdf2_hmac(
+            'sha256', 
+            plain_password.encode('utf-8'), 
+            salt.encode('utf-8'), 
+            iterations
+        ).hex()
+        return secrets.compare_digest(key, new_key)
+    except Exception:
+        return False
+
+
 def verify_auth(api_config, username: str, password: str):
     """Verify username/password"""
-    return secrets.compare_digest(username, api_config.get("username")) and secrets.compare_digest(
-        password, api_config.get("password")
-    )
+    # 1. Check Primary Admin
+    if secrets.compare_digest(username, api_config.get("username", "")):
+        stored_password = api_config.get("password", "")
+        return VerifyPassword(password, stored_password)
+        
+    # 2. Check Additional Users (Multi-User Support)
+    users = api_config.get("users", [])
+    for user in users:
+        if secrets.compare_digest(username, user.get("username", "")):
+            return VerifyPassword(password, user.get("password", ""))
+            
+    return False
 
 
 httpbasic = HTTPBasic(auto_error=False)
@@ -105,8 +147,6 @@ def create_token(data: dict, secret_key: str, token_type: str = "access") -> str
     return encoded_jwt
 
 
-
-
 def http_basic_or_jwt_token(
     form_data: HTTPBasicCredentials = Depends(httpbasic),
     token: str = Depends(oauth2_scheme),
@@ -123,12 +163,24 @@ def http_basic_or_jwt_token(
     )
 
 
+from pydantic import BaseModel
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 @router_login.post("/token/login", response_model=AccessAndRefreshToken)
 def token_login(
-    form_data: HTTPBasicCredentials = Depends(security), api_config=Depends(get_api_config)
+    body: LoginRequest | None = None,
+    form_data: HTTPBasicCredentials = Depends(httpbasic), 
+    api_config=Depends(get_api_config)
 ):
-    if verify_auth(api_config, form_data.username, form_data.password):
-        token_data = {"identity": {"u": form_data.username}}
+    # Try getting from Basic Auth first, then fall back to JSON body
+    user = form_data.username if form_data else (body.username if body else None)
+    pwd = form_data.password if form_data else (body.password if body else None)
+    
+    if user and pwd and verify_auth(api_config, user, pwd):
+        token_data = {"identity": {"u": user}}
         access_token = create_token(
             token_data,
             api_config.get("jwt_secret_key", "super-secret"),
@@ -161,3 +213,98 @@ def token_refresh(token: str = Depends(oauth2_scheme), api_config=Depends(get_ap
         token_type="access",  # noqa: S106
     )
     return {"access_token": access_token}
+
+
+@router_login.post("/register", tags=["auth"])
+def register_user(
+    payload: LoginRequest,
+    config: dict[str, Any] = Depends(get_api_config), # Wait, saving needs FULL config
+    full_config: dict[str, Any] = Depends(get_config) # Needed for file path
+):
+    """
+    Create a new user account.
+    Adds the user to the 'users' list in config.json.
+    """
+    import json
+    from pathlib import Path
+    
+    try:
+        from binancebot.rpc.api_server.webserver import ApiServer
+        
+        # 1. Locate Config File
+        config_path = None
+        initial_files = full_config.get("initial_config_files")
+        if initial_files and len(initial_files) > 0:
+            config_path = Path(initial_files[0])
+        
+        if not config_path or not config_path.exists():
+            orig_path = full_config.get("original_config_path")
+            if orig_path:
+                config_path = Path(orig_path)
+        
+        if not config_path or not config_path.exists():
+            current_file = Path(__file__)
+            project_root = current_file.parent.parent.parent.parent.parent
+            config_path = project_root / "config" / "config.json"
+        
+        if not config_path.exists():
+            import os
+            cwd_config = Path(os.getcwd()) / "config" / "config.json"
+            if cwd_config.exists():
+                config_path = cwd_config
+            else:
+                raise HTTPException(status_code=404, detail="Config file not found")
+        
+        # 2. Read Config
+        with open(config_path, "r", encoding="utf-8") as f:
+            current_config = json.load(f)
+        
+        if "api_server" not in current_config:
+            current_config["api_server"] = {}
+            
+        api_cfg = current_config["api_server"]
+        
+        # 3. Check for duplicates
+        if payload.username == api_cfg.get("username", "admin"):
+            raise HTTPException(status_code=400, detail="Username already exists (Admin)")
+            
+        users = api_cfg.get("users", [])
+        if any(u.get("username") == payload.username for u in users):
+             raise HTTPException(status_code=400, detail="Username already exists")
+        
+        # 4. Hash Password & Add User
+        hashed_pwd = HashPassword(payload.password)
+        
+        if "users" not in api_cfg:
+            api_cfg["users"] = []
+            
+        api_cfg["users"].append({
+            "username": payload.username,
+            "password": hashed_pwd
+        })
+        
+        # 5. Save Config
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(current_config, f, indent=4, ensure_ascii=False)
+        
+        # 6. Hot-Reload
+        if ApiServer._config and "api_server" in ApiServer._config:
+            if "users" not in ApiServer._config["api_server"]:
+                ApiServer._config["api_server"]["users"] = []
+            ApiServer._config["api_server"]["users"].append({
+                "username": payload.username,
+                "password": hashed_pwd
+            })
+            logger.info(f"Hot-Reload: New user '{payload.username}' registered.")
+        
+        return {
+            "status": "success",
+            "message": f"Account '{payload.username}' created successfully!",
+            "username": payload.username
+        }
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.error(f"Failed to register user: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

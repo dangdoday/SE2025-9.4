@@ -1,0 +1,32 @@
+{
+    "$schema": "https://schema.binancebot.local/schema.json",
+    "max_open_trades": 10,
+    "stake_currency": "USDT",
+    "stake_amount": 5,
+    "tradable_balance_ratio": 0.99,
+    "fiat_display_currency": "USD",
+    "timeframe": "5m",
+    "dry_run": false,
+    "dry_run_wallet": 5000,
+    "exchange": {
+        "name": "binance",
+        "key": "NHẬP_API_KEY_CỦA_BẠN_VÀO_ĐÂY",
+        "secret": "NHẬP_SECRET_KEY_CỦA_BẠN_VÀO_ĐÂY",
+        "ccxt_config": {
+            "options": {
+                "defaultType": "spot",
+                "adjustForTimeDifference": true
+            },
+            "sandbox": false
+        }
+    },
+    "api_server": {
+        "enabled": true,
+        "listen_ip_address": "127.0.0.1",
+        "listen_port": 8080,
+        "username": "admin",
+        "password": "pass789"
+    },
+    "strategy": "RSI_EMA",
+    "trading_mode": "spot"
+}

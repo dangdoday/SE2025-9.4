@@ -73,6 +73,7 @@ def init_db(db_url: str) -> None:
         )
 
     try:
+        logger.info(f"Initializing Database with URL: {db_url}")
         engine = create_engine(db_url, future=True, **kwargs)
     except NoSuchModuleError:
         raise OperationalException(

@@ -161,6 +161,15 @@ class ApiServer(RPCHandler):
             prefix="/api/v1",
             dependencies=[Depends(http_basic_or_jwt_token), Depends(is_webserver_mode)],
         )
+        
+        # Config save router - for saving API keys to file
+        from binancebot.rpc.api_server.api_config import router as api_config
+        app.include_router(
+            api_config,
+            prefix="/api/v1",
+            dependencies=[Depends(http_basic_or_jwt_token)],
+        )
+        
         app.include_router(ws_router, prefix="/api/v1")
         # UI Router MUST be last!
         app.include_router(router_ui, prefix="")

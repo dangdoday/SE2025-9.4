@@ -42,7 +42,6 @@ from binancebot.commands.optimize_commands import (
     start_recursive_analysis,
 )
 from binancebot.commands.pairlist_commands import start_test_pairlist
-from binancebot.commands.plot_commands import start_plot_dataframe, start_plot_profit
 from binancebot.commands.strategy_utils_commands import start_strategy_update
 from binancebot.commands.trade_commands import start_trading
 from binancebot.commands.webserver_commands import start_webserver

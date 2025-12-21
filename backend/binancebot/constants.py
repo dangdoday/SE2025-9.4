@@ -16,8 +16,8 @@ HYPEROPT_EPOCH = 100  # epochs
 RETRY_TIMEOUT = 30  # sec
 TIMEOUT_UNITS = ["minutes", "seconds"]
 EXPORT_OPTIONS = ["none", "trades", "signals"]
-DEFAULT_DB_PROD_URL = "sqlite:///tradesv3.sqlite"
-DEFAULT_DB_DRYRUN_URL = "sqlite:///tradesv3.dryrun.sqlite"
+DEFAULT_DB_PROD_URL = "sqlite:///data/tradesv3.sqlite"
+DEFAULT_DB_DRYRUN_URL = "sqlite:///data/tradesv3.dryrun.sqlite"
 UNLIMITED_STAKE_AMOUNT = "unlimited"
 DEFAULT_AMOUNT_RESERVE_PERCENT = 0.05
 REQUIRED_ORDERTIF = ["entry", "exit"]
@@ -238,4 +238,4 @@ ExchangeConfig = dict[str, Any]
 IntOrInf = float
 
 
-EntryExecuteMode = Literal["initial", "pos_adjust", "replace"]
+EntryExecuteMode = Literal["initial", "pos_adjust", "replace", "force_entry"]

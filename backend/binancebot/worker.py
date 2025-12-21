@@ -204,7 +204,7 @@ class Worker:
             tb = traceback.format_exc()
             hint = "Issue `/start` if you think it is safe to restart."
 
-            self.freqtrade.notify_status(
+            self.binancebot.notify_status(
                 f"*OperationalException:*\n```\n{tb}```\n {hint}", msg_type=RPCMessageType.EXCEPTION
             )
 
@@ -219,8 +219,8 @@ class Worker:
         # Tell systemd that we initiated reconfiguration
         self._notify("RELOADING=1")
 
-        # Clean up current freqtrade modules
-        self.freqtrade.cleanup()
+        # Clean up current binancebot modules
+        self.binancebot.cleanup()
 
         # Load and validate config and create new instance of the bot
         self._init(True)

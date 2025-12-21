@@ -1,170 +1,88 @@
 <script setup lang="ts">
-import type { AllProfitStats } from '@/types';
+import { computed } from 'vue'
+import { useBotStore } from '@/stores/botStore'
 
-const props = defineProps<{
-  profitAll: AllProfitStats;
-  stakeCurrency: string;
-  stakeCurrencyDecimals: number;
-}>();
+const botStore = useBotStore()
 
-const profit = computed(() => {
-  if (!props.profitAll?.short) {
-    return props.profitAll.all;
-  }
-  return props.profitAll[selectedOption.value];
-});
+const profitClass = computed(() => {
+  const profit = botStore.totalProfit
+  if (profit > 0) return 'text-success'
+  if (profit < 0) return 'text-danger'
+  return 'text-white'
+})
 
-const profitItems = computed(() => {
-  if (!profit.value) return [];
-  return [
-    {
-      metric: 'ROI closed trades',
-      value: profit.value.profit_closed_coin
-        ? `${formatPriceCurrency(
-            profit.value.profit_closed_coin,
-            props.stakeCurrency,
-            props.stakeCurrencyDecimals,
-          )} (${formatPercent(profit.value.profit_closed_ratio_mean, 2)})`
-        : 'N/A',
-      // (&sum; ${formatPercent(profit.value.profit_closed_ratio_sum,  2,)})`
-    },
-    {
-      metric: 'ROI all trades',
-      value: profit.value.profit_all_coin
-        ? `${formatPriceCurrency(
-            profit.value.profit_all_coin,
-            props.stakeCurrency,
-            props.stakeCurrencyDecimals,
-          )} (${formatPercent(profit.value.profit_all_ratio_mean, 2)})`
-        : 'N/A',
-      //  (&sum; ${formatPercent(profit.value.profit_all_ratio_sum,2,)})`
-    },
+const todayProfit = computed(() => {
+  if (!botStore.dailyStats || botStore.dailyStats.length === 0) return 0
+  
+  const today = new Date().toISOString().split('T')[0]
+  const todayStat = botStore.dailyStats.find((d: any) => d.date === today)
+  return todayStat ? todayStat.abs_profit : 0
+})
 
-    {
-      metric: 'Total Trade count',
-      value: `${profit.value.trade_count ?? 0}`,
-    },
-    {
-      metric: 'Bot started',
-      value: profit.value.bot_start_timestamp,
-      isTs: true,
-    },
-    {
-      metric: 'First Trade opened',
-      value: profit.value.first_trade_timestamp,
-      isTs: true,
-    },
-    {
-      metric: 'Latest Trade opened',
-      value: profit.value.latest_trade_timestamp,
-      isTs: true,
-    },
-    {
-      metric: 'Win / Loss',
-      value: `${profit.value.winning_trades ?? 0} / ${profit.value.losing_trades ?? 0}`,
-    },
-    {
-      metric: 'Winrate',
-      value: `${profit.value.winrate ? formatPercent(profit.value.winrate) : 'N/A'}`,
-    },
-    {
-      metric: 'Expectancy (ratio)',
-      value: `${formatNumber(profit.value.expectancy, 2)} (${formatNumber(profit.value.expectancy_ratio, 2)})'
-      })`,
-    },
-    {
-      metric: 'Avg. Duration',
-      value: `${profit.value.avg_duration ?? 'N/A'}`,
-    },
-    {
-      metric: 'Best performing',
-      value: profit.value.best_pair
-        ? `${profit.value.best_pair}: ${formatPercent(profit.value.best_pair_profit_ratio, 2)}`
-        : 'N/A',
-    },
-    {
-      metric: 'Trading volume',
-      value: `${formatPriceCurrency(
-        profit.value.trading_volume ?? 0,
-        props.stakeCurrency,
-        props.stakeCurrencyDecimals,
-      )}`,
-    },
-    {
-      metric: 'Profit factor',
-      value: `${formatNumber(profit.value.profit_factor, 2)}`,
-    },
-    {
-      metric: 'Max Drawdown',
-      value: `${profit.value.max_drawdown ? formatPercent(profit.value.max_drawdown, 2) : 'N/A'} (${
-        profit.value.max_drawdown_abs
-          ? formatPriceCurrency(
-              profit.value.max_drawdown_abs,
-              props.stakeCurrency,
-              props.stakeCurrencyDecimals,
-            )
-          : 'N/A'
-      }) ${
-        profit.value.max_drawdown_start_timestamp && profit.value.max_drawdown_end_timestamp
-          ? 'from ' +
-            timestampms(profit.value.max_drawdown_start_timestamp) +
-            ' to ' +
-            timestampms(profit.value.max_drawdown_end_timestamp)
-          : ''
-      }`,
-    },
-    {
-      metric: 'Current Drawdown',
-      value: `${profit.value.current_drawdown ? formatPercent(profit.value.current_drawdown, 2) : 'N/A'} (${
-        profit.value.current_drawdown_abs
-          ? formatPriceCurrency(
-              profit.value.current_drawdown_abs,
-              props.stakeCurrency,
-              props.stakeCurrencyDecimals,
-            )
-          : 'N/A'
-      }) ${
-        profit.value.current_drawdown_start_timestamp
-          ? 'since ' + timestampms(profit.value.current_drawdown_start_timestamp)
-          : ''
-      }`,
-    },
-  ];
-});
+const weekProfit = computed(() => {
+  if (!botStore.dailyStats || botStore.dailyStats.length === 0) return 0
+  
+  // Calculate profit for current ISO week or just last 7 days? 
+  // "This Week" usually implies the current week (Mon-Sun).
+  // But for simple "Recent performance", last 7 days is often used.
+  // Let's use last 7 days for consistency with typical dashboard view.
+  // Actually, 'dailyStats' is a list of days. I'll just sum the last 7 entries IF they are within 7 days.
+  // Better: Filter by date >= 7 days ago.
+  
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const cutoff = sevenDaysAgo.toISOString().split('T')[0]
+  
+  return botStore.dailyStats
+    .filter((d: any) => d.date >= cutoff)
+    .reduce((sum: number, d: any) => sum + d.abs_profit, 0)
+})
 
-const selectedOption = ref('all');
-const options = [
-  { value: 'all', text: 'All' },
-  { value: 'long', text: 'Long' },
-  { value: 'short', text: 'Short' },
-];
+function formatProfit(value: number) {
+  const sign = value > 0 ? '+' : ''
+  return `${sign}${value.toFixed(2)}`
+}
+
+function getProfitColor(value: number) {
+  if (value > 0) return 'text-success'
+  if (value < 0) return 'text-danger'
+  return 'text-gray-400' // or default color
+}
 </script>
 
 <template>
-  <div>
-    <div v-if="profitAll?.long && profitAll?.short" class="flex justify-between items-center">
-      <span>Profits for</span>
-      <SelectButton
-        v-model="selectedOption"
-        :options="options"
-        option-label="text"
-        option-value="value"
-        :allow-empty="false"
-        size="small"
-      ></SelectButton>
-      <span>Trades</span>
+  <div class="card">
+    <div class="card-header">
+      <span>📈 Profit</span>
+      <button @click="botStore.fetchProfit()" class="text-xs text-gray-500 hover:text-primary">
+        🔄
+      </button>
     </div>
 
-    <DataTable class="text-start" small borderless :value="profitItems">
-      <Column field="metric" header="Metric"></Column>
-      <Column field="value" header="Value">
-        <template #body="{ data }">
-          <DateTimeTZ v-if="data.isTs" :date="data.value" show-timezone />
-          <template v-else>
-            {{ data.value }}
-          </template>
-        </template>
-      </Column>
-    </DataTable>
+    <div class="mb-4">
+      <div class="text-3xl font-bold" :class="profitClass">
+        {{ botStore.totalProfit >= 0 ? '+' : '' }}{{ botStore.totalProfit.toFixed(2) }}
+      </div>
+      <div class="text-sm text-gray-500">USDT Total Profit</div>
+    </div>
+
+    <div class="space-y-2 text-sm">
+      <div class="flex justify-between py-1 border-b border-dark-100">
+        <span class="text-gray-500">Today</span>
+        <span :class="getProfitColor(todayProfit)">{{ formatProfit(todayProfit) }}</span>
+      </div>
+      <div class="flex justify-between py-1 border-b border-dark-100">
+        <span class="text-gray-500">Last 7 Days</span>
+        <span :class="getProfitColor(weekProfit)">{{ formatProfit(weekProfit) }}</span>
+      </div>
+      <div class="flex justify-between py-1 border-b border-dark-100">
+        <span class="text-gray-500">Win Rate</span>
+        <span class="text-primary">{{ botStore.winRate }}%</span>
+      </div>
+      <div class="flex justify-between py-1">
+        <span class="text-gray-500">Closed Trades</span>
+        <span class="text-white">{{ botStore.profit?.closed_trade_count || 0 }}</span>
+      </div>
+    </div>
   </div>
 </template>

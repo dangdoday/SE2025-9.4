@@ -1035,9 +1035,14 @@ class Exchange:
             return 1 / pow(10, precision)
 
     def get_min_pair_stake_amount(
-        self, pair: str, price: float, stoploss: float, leverage: float = 1.0
+        self,
+        pair: str,
+        price: float,
+        stoploss: float,
+        leverage: float = 1.0,
+        ignore_reserve: bool = False,
     ) -> float | None:
-        return self._get_stake_amount_limit(pair, price, stoploss, "min", leverage)
+        return self._get_stake_amount_limit(pair, price, stoploss, "min", leverage, ignore_reserve)
 
     def get_max_pair_stake_amount(self, pair: str, price: float, leverage: float = 1.0) -> float:
         max_stake_amount = self._get_stake_amount_limit(pair, price, 0.0, "max", leverage)
@@ -1055,6 +1060,7 @@ class Exchange:
         stoploss: float,
         limit: Literal["min", "max"],
         leverage: float = 1.0,
+        ignore_reserve: bool = False,
     ) -> float | None:
         isMin = limit == "min"
 
@@ -1065,7 +1071,7 @@ class Exchange:
 
         stake_limits = []
         limits = market["limits"]
-        if isMin:
+        if isMin and not ignore_reserve:
             # reserve some percent defined in config (5% default) + stoploss
             margin_reserve: float = 1.0 + self._config.get(
                 "amount_reserve_percent", DEFAULT_AMOUNT_RESERVE_PERCENT
@@ -1074,11 +1080,12 @@ class Exchange:
             # it should not be more than 50%
             stoploss_reserve = max(min(stoploss_reserve, 1.5), 1)
         else:
-            # is_max
+            # is_max or ignore_reserve
             margin_reserve = 1.0
             stoploss_reserve = 1.0
-            if max_from_tiers := self._get_max_notional_from_tiers(pair, leverage=leverage):
-                stake_limits.append(max_from_tiers)
+            if not isMin:
+                if max_from_tiers := self._get_max_notional_from_tiers(pair, leverage=leverage):
+                    stake_limits.append(max_from_tiers)
 
         if limits["cost"][limit] is not None:
             stake_limits.append(

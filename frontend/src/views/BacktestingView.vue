@@ -1,232 +1,205 @@
 <script setup lang="ts">
-enum BtRunModes {
-  run = 'run',
-  results = 'results',
-  visualize = 'visualize',
-  visualizesummary = 'visualize-summary',
-  compareresults = 'compare-results',
-  historicresults = 'historicResults',
-}
+import { ref, onMounted } from 'vue'
+import { useBotStore } from '@/stores/botStore'
+import { botApi } from '@/api/api'
+import CumProfitChart from '@/components/charts/CumProfitChart.vue'
 
-const botStore = useBotStore();
-const btStore = useBtStore();
+const botStore = useBotStore()
 
-const hasBacktestResult = computed(() =>
-  botStore.activeBot.backtestHistory
-    ? Object.keys(botStore.activeBot.backtestHistory).length !== 0
-    : false,
-);
-const hasMultiBacktestResult = computed(() =>
-  botStore.activeBot.backtestHistory
-    ? Object.keys(botStore.activeBot.backtestHistory).length > 1
-    : false,
-);
+// Form state
+const strategy = ref('RSI_EMA')
+const timeframe = ref('4h')
+const startDate = ref('2023-01-01')
+const endDate = ref('2025-01-01')
+const isRunning = ref(false)
+const progress = ref(0)
+const results = ref<any>(null)
 
-const timeframe = computed((): string => {
-  return botStore.activeBot.selectedBacktestResult?.timeframe ?? '';
-});
+const strategies = ref<string[]>([])
+const timeframes = ['1m', '5m', '15m', '1h', '4h', '1d']
 
-const showLeftBar = ref(false);
+onMounted(async () => {
+  await botStore.fetchStrategies()
+  strategies.value = botStore.strategies
+})
 
-const btFormMode = ref<BtRunModes>(BtRunModes.run);
-const pollInterval = ref<number | null>(null);
+async function runBacktest() {
+  isRunning.value = true
+  progress.value = 0
+  results.value = null
 
-function selectBacktestResult() {
-  if (!botStore.activeBot.selectedBacktestResult) {
-    return;
-  }
-  // Set parameters for this result
-  btStore.strategy = botStore.activeBot.selectedBacktestResult.strategy_name;
-  botStore.activeBot.getStrategy(btStore.strategy);
-  btStore.selectedTimeframe = botStore.activeBot.selectedBacktestResult.timeframe;
-  btStore.selectedDetailTimeframe =
-    botStore.activeBot.selectedBacktestResult.timeframe_detail || '';
-  // TODO: maybe this should not use timerange, but the actual backtest start/end results instead?
-  btStore.timerange = botStore.activeBot.selectedBacktestResult.timerange;
-  btStore.enableProtections = botStore.activeBot.selectedBacktestResult.enable_protections;
-  btStore.freqAI.enabled = !!botStore.activeBot.selectedBacktestResult.freqaimodel;
-  btStore.freqAI.model = botStore.activeBot.selectedBacktestResult.freqaimodel || '';
-  btStore.freqAI.identifier = botStore.activeBot.selectedBacktestResult.freqai_identifier || '';
-}
-
-watch(
-  () => botStore.activeBot.selectedBacktestResultKey,
-  () => {
-    selectBacktestResult();
-  },
-);
-
-onMounted(() => botStore.activeBot.getState());
-watch(
-  () => botStore.activeBot.backtestRunning,
-  () => {
-    if (botStore.activeBot.backtestRunning === true) {
-      pollInterval.value = window.setInterval(botStore.activeBot.pollBacktest, 1000);
-    } else if (pollInterval.value) {
-      clearInterval(pollInterval.value);
-      pollInterval.value = null;
+  try {
+    const config = {
+      strategy: strategy.value,
+      timeframe: timeframe.value,
+      timerange: `${startDate.value.replace(/-/g, '')}-${endDate.value.replace(/-/g, '')}`
     }
-  },
-);
+
+    // Start backtest
+    await botApi.backtest(config)
+
+    // Poll for results
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await botApi.backtestStatus()
+        progress.value = res.data.progress || 0
+        
+        if (res.data.status === 'ended') {
+          clearInterval(pollInterval)
+          results.value = res.data
+          isRunning.value = false
+        }
+      } catch (e) {
+        clearInterval(pollInterval)
+        isRunning.value = false
+      }
+    }, 1000)
+
+  } catch (error) {
+    console.error('Backtest failed:', error)
+    isRunning.value = false
+  }
+}
+
+async function abortBacktest() {
+  try {
+    await botApi.backtestAbort()
+    isRunning.value = false
+    progress.value = 0
+  } catch (error) {
+    console.error('Failed to abort:', error)
+  }
+}
 </script>
 
 <template>
-  <div class="flex flex-row pt-1 me-1 relative" style="height: calc(100vh - 60px)">
-    <div
-      v-if="btFormMode !== 'visualize'"
-      class="flex md:flex-row h-full w-16 transition-all duration-200 shrink-0 me-1 border-r border-surface-200 dark:border-surface-900"
-      :class="{
-        'w-78!': showLeftBar,
-      }"
-    >
-      <!-- Left bar -->
-      <div class="flex flex-col fixed">
-        <Button
-          class="self-start"
-          aria-label="Close"
-          size="small"
-          severity="secondary"
-          variant="outlined"
-          @click="showLeftBar = !showLeftBar"
-        >
-          <i-mdi-chevron-right v-if="!showLeftBar" width="24" height="24" />
-          <i-mdi-chevron-left v-if="showLeftBar" width="24" height="24" />
-        </Button>
-        <Transition name="fade">
-          <BacktestResultSelect
-            v-if="showLeftBar"
-            :backtest-history="botStore.activeBot.backtestHistory"
-            :selected-backtest-result-key="botStore.activeBot.selectedBacktestResultKey"
-            :can-use-modify="botStore.activeBot.botFeatures.backtestSetNotes"
-            @selection-change="botStore.activeBot.setBacktestResultKey"
-            @remove-result="botStore.activeBot.removeBacktestResultFromMemory"
-            @update-result="botStore.activeBot.saveBacktestResultMetadata"
-          />
-        </Transition>
-      </div>
-      <!-- End Left bar -->
+  <div class="space-y-6 fade-in">
+    <!-- Header -->
+    <div>
+      <h1 class="text-2xl font-bold text-white">Backtesting</h1>
+      <p class="text-gray-500 text-sm">Test your strategy with historical data</p>
     </div>
-    <div class="flex flex-col w-full">
-      <h2 class="ms-5 text-3xl font-bold">Backtesting</h2>
-      <p v-if="!botStore.activeBot.canRunBacktest">
-        Bot must be in webserver mode to enable Backtesting.
-      </p>
-      <div class="w-full">
-        <Tabs v-model:value="btFormMode" lazy>
-          <TabList>
-            <Tab
-              v-if="botStore.activeBot.botFeatures.backtestHistory"
-              class="flex items-center"
-              value="historicResults"
-              :disabled="!botStore.activeBot.canRunBacktest"
-              ><i-mdi-cloud-download class="me-2" />Load Results</Tab
-            >
-            <Tab
-              class="flex items-center"
-              value="run"
-              :disabled="!botStore.activeBot.canRunBacktest"
-              ><i-mdi-run-fast class="me-2" />Run backtest</Tab
-            >
-            <Tab
-              id="bt-analyze-btn"
-              class="flex items-center"
-              value="results"
-              :disabled="!hasBacktestResult"
-              ><i-mdi-table-eye class="me-2" />Analyze result</Tab
-            >
-            <Tab
-              v-if="hasMultiBacktestResult"
-              class="flex items-center"
-              value="compare-results"
-              :disabled="!hasMultiBacktestResult"
-              ><i-mdi-compare-horizontal class="me-2" />Compare results</Tab
-            >
-            <Tab class="flex items-center" value="visualize-summary" :disabled="!hasBacktestResult"
-              ><i-mdi-chart-bell-curve-cumulative class="me-2" />Visualize summary</Tab
-            >
-            <Tab class="flex items-center" value="visualize" :disabled="!hasBacktestResult"
-              ><i-mdi-chart-timeline-variant-shimmer class="me-2" />Visualize result</Tab
-            >
-          </TabList>
-          <TabPanels>
-            <TabPanel value="historicResults">
-              <BacktestHistoryLoad />
-            </TabPanel>
-            <TabPanel value="run">
-              <BacktestRun />
-            </TabPanel>
-            <TabPanel value="results">
-              <BacktestResultAnalysis
-                v-if="hasBacktestResult && botStore.activeBot.selectedBacktestResult"
-                :backtest-result="botStore.activeBot.selectedBacktestResult"
-                class="flex-fill"
-              />
-            </TabPanel>
-            <TabPanel value="compare-results">
-              <BacktestResultComparison
-                v-if="hasMultiBacktestResult"
-                :backtest-results="botStore.activeBot.backtestHistory"
-                class="flex-fill"
-              />
-            </TabPanel>
-            <TabPanel value="visualize-summary">
-              <BacktestGraphs
-                v-if="hasBacktestResult && botStore.activeBot.selectedBacktestResult"
-                :trades="botStore.activeBot.selectedBacktestResult.trades"
-                class="flex-fill"
-              />
-            </TabPanel>
-            <TabPanel value="visualize" l>
-              <BacktestResultChart
-                v-if="botStore.activeBot.selectedBacktestResult"
-                :timeframe="timeframe"
-                :strategy="btStore.strategy"
-                :timerange="btStore.timerange"
-                :backtest-result="botStore.activeBot.selectedBacktestResult"
-                :freqai-model="btStore.freqAI.enabled ? btStore.freqAI.model : undefined"
-              />
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
 
-        <small v-show="botStore.activeBot.backtestRunning" class="text-end bt-running-label"
-          >Backtest running: {{ botStore.activeBot.backtestStep }}
-          {{ formatPercent(botStore.activeBot.backtestProgress, 2) }}</small
-        >
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Configuration Panel -->
+      <div class="card">
+        <div class="card-header">
+          <span>⚙️ Configuration</span>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Strategy -->
+          <div>
+            <label class="label">Strategy</label>
+            <select v-model="strategy" class="input">
+              <option v-for="s in strategies" :key="s" :value="s">{{ s }}</option>
+              <option value="RSI_EMA">RSI_EMA</option>
+            </select>
+          </div>
+
+          <!-- Timeframe -->
+          <div>
+            <label class="label">Timeframe</label>
+            <select v-model="timeframe" class="input">
+              <option v-for="tf in timeframes" :key="tf" :value="tf">{{ tf }}</option>
+            </select>
+          </div>
+
+          <!-- Date Range -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="label">Start Date</label>
+              <input v-model="startDate" type="date" class="input" />
+            </div>
+            <div>
+              <label class="label">End Date</label>
+              <input v-model="endDate" type="date" class="input" />
+            </div>
+          </div>
+
+          <!-- Progress -->
+          <div v-if="isRunning" class="pt-4">
+            <div class="flex justify-between text-sm mb-2">
+              <span class="text-gray-400">Progress</span>
+              <span class="text-primary">{{ Math.round(progress * 100) }}%</span>
+            </div>
+            <div class="w-full h-2 bg-dark-100 rounded-full overflow-hidden">
+              <div 
+                class="h-full bg-primary transition-all duration-300"
+                :style="{ width: `${progress * 100}%` }"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Buttons -->
+          <div class="pt-4 flex gap-3">
+            <button 
+              v-if="!isRunning"
+              @click="runBacktest" 
+              class="btn btn-primary flex-1"
+            >
+              🚀 Run Backtest
+            </button>
+            <button 
+              v-else
+              @click="abortBacktest" 
+              class="btn btn-danger flex-1"
+            >
+              ⏹️ Abort
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results Panel -->
+      <div class="lg:col-span-2 space-y-4">
+        <!-- Results Summary -->
+        <div v-if="results" class="card">
+          <div class="card-header">
+            <span>📊 Results Summary</span>
+          </div>
+          
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <div class="stat-label">Total Profit</div>
+              <div class="stat-value stat-positive">
+                +{{ (results.profit_total_abs || 0).toFixed(2) }} USDT
+              </div>
+            </div>
+            <div>
+              <div class="stat-label">Win Rate</div>
+              <div class="stat-value text-success">
+                {{ ((results.wins || 0) / (results.total_trades || 1) * 100).toFixed(1) }}%
+              </div>
+            </div>
+            <div>
+              <div class="stat-label">Total Trades</div>
+              <div class="stat-value text-white">
+                {{ results.total_trades || 0 }}
+              </div>
+            </div>
+            <div>
+              <div class="stat-label">Max Drawdown</div>
+              <div class="stat-value stat-negative">
+                {{ (results.max_drawdown_abs || 0).toFixed(2) }}%
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="card">
+          <div class="card-header">
+            <span>📈 Equity Curve</span>
+          </div>
+          <div class="h-80">
+            <CumProfitChart v-if="results" :data="results" />
+            <div v-else class="h-full flex items-center justify-center text-gray-500">
+              Run a backtest to see results
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
-
-<style lang="css" scoped>
-.bt-running-label {
-  position: absolute;
-  right: 2em;
-  margin-top: 1em;
-}
-
-.flex-samesize-items {
-  flex: 1 1 0;
-  @media md {
-    flex: unset;
-  }
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: all 0.2s;
-}
-
-.fade-enter,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.bt-config {
-  @media (min-width: 992px) {
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 75vw;
-  }
-}
-</style>

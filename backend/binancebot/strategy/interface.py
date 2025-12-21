@@ -29,7 +29,6 @@ from binancebot.enums import (
 )
 from binancebot.exceptions import OperationalException, StrategyError
 from binancebot.exchange import timeframe_to_minutes, timeframe_to_next_date, timeframe_to_seconds
-from binancebot.ft_types import AnnotationType
 from binancebot.misc import remove_entry_exit_signals
 from binancebot.persistence import Order, PairLocks, Trade
 from binancebot.strategy.hyper import HyperStrategyMixin
@@ -220,9 +219,9 @@ class IStrategy(ABC, HyperStrategyMixin):
 
     def ft_bot_cleanup(self) -> None:
         """
-        Clean up AIML and child threads
+        Clean up resources when bot is shutting down
         """
-        self.aiml.shutdown()
+        pass  # AIML was removed
 
     @abstractmethod
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -870,7 +869,7 @@ class IStrategy(ABC, HyperStrategyMixin):
 
     def plot_annotations(
         self, pair: str, start_date: datetime, end_date: datetime, dataframe: DataFrame, **kwargs
-    ) -> list[AnnotationType]:
+    ) -> list:
         """
         Retrieve area annotations for a chart.
         Must be returned as array, with type, label, color, start, end, y_start, y_end.
@@ -882,7 +881,7 @@ class IStrategy(ABC, HyperStrategyMixin):
         :param end_date: End date of the chart data being requested
         :param dataframe: DataFrame with the analyzed data for the chart
         :param **kwargs: Ensure to keep this here so updates to this won't break your strategy.
-        :return: List of AnnotationType objects
+        :return: List of annotation objects
         """
         return []
 
@@ -1852,32 +1851,10 @@ class IStrategy(ABC, HyperStrategyMixin):
             df = df.rename({"sell": "exit_long"}, axis="columns")
         return df
 
-    def ft_plot_annotations(self, pair: str, dataframe: DataFrame) -> list[AnnotationType]:
+    def ft_plot_annotations(self, pair: str, dataframe: DataFrame) -> list:
         """
         Internal wrapper around plot_dataframe
+        Plot functionality removed - returns empty list
         """
-        if len(dataframe) > 0:
-            annotations = strategy_safe_wrapper(self.plot_annotations)(
-                pair=pair,
-                dataframe=dataframe,
-                start_date=dataframe.iloc[0]["date"].to_pydatetime(),
-                end_date=dataframe.iloc[-1]["date"].to_pydatetime(),
-            )
-
-            from binancebot.ft_types.plot_annotation_type import AnnotationTypeTA
-
-            annotations_new: list[AnnotationType] = []
-            for annotation in annotations:
-                if isinstance(annotation, dict):
-                    # Convert to AnnotationType
-                    try:
-                        AnnotationTypeTA.validate_python(annotation)
-                        annotations_new.append(annotation)
-                    except ValidationError as e:
-                        logger.error(f"Invalid annotation data: {annotation}. Error: {e}")
-                else:
-                    # Already an AnnotationType
-                    annotations_new.append(annotation)
-
-            return annotations_new
         return []
+

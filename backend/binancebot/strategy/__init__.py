@@ -6,7 +6,6 @@ from binancebot.exchange import (
     timeframe_to_prev_date,
     timeframe_to_seconds,
 )
-from binancebot.ft_types import AnnotationType
 from binancebot.persistence import Order, PairLocks, Trade
 from binancebot.strategy.informative_decorator import informative
 from binancebot.strategy.interface import IStrategy
@@ -45,5 +44,4 @@ __all__ = [
     "merge_informative_pair",
     "stoploss_from_absolute",
     "stoploss_from_open",
-    "AnnotationType",
 ]

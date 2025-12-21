@@ -32,7 +32,6 @@ from binancebot.enums import (
 from binancebot.exceptions import ExchangeError, PricingError
 from binancebot.exchange import Exchange, timeframe_to_minutes, timeframe_to_msecs
 from binancebot.exchange.exchange_utils import price_to_precision
-from binancebot.ft_types import AnnotationType
 from binancebot.loggers import bufferHandler
 from binancebot.persistence import CustomDataWrapper, KeyValueStore, Order, PairLocks, Trade
 from binancebot.persistence.models import PairLock, custom_data_rpc_wrapper
@@ -394,7 +393,7 @@ class RPC:
         profit_units: dict[date, dict] = {}
         daily_stake = self._binancebot.wallets.get_total_stake_amount()
 
-        for day in range(0, timescale):
+        for day in range(timescale - 1, -1, -1):
             profitday = start_date - time_offset(day)
             # Only query for necessary columns for performance reasons.
             trades = Trade.session.execute(
@@ -1098,22 +1097,25 @@ class RPC:
                 "force_entry", self._binancebot.strategy.order_types["entry"]
             )
         with self._binancebot._exit_lock:
-            if self._binancebot.execute_entry(
-                pair,
-                stake_amount,
-                price,
-                ordertype=order_type,
-                trade=trade,
-                is_short=is_short,
-                enter_tag=enter_tag,
-                leverage_=leverage,
-                mode="pos_adjust" if trade else "initial",
-            ):
-                Trade.commit()
-                trade = Trade.get_trades([Trade.is_open.is_(True), Trade.pair == pair]).first()
-                return trade
-            else:
-                raise RPCException(f"Failed to enter position for {pair}.")
+            try:
+                if self._binancebot.execute_entry(
+                    pair,
+                    stake_amount,
+                    price,
+                    ordertype=order_type,
+                    trade=trade,
+                    is_short=is_short,
+                    enter_tag=enter_tag,
+                    leverage_=leverage,
+                    mode="pos_adjust" if trade else "force_entry",
+                ):
+                    Trade.commit()
+                    trade = Trade.get_trades([Trade.is_open.is_(True), Trade.pair == pair]).first()
+                    return trade
+                else:
+                    raise RPCException(f"Failed to enter position for {pair}.")
+            except DependencyException as e:
+                raise RPCException(f"Failed to enter position for {pair}. Reason: {e}") from e
 
     def _rpc_cancel_open_order(self, trade_id: int):
         if self._binancebot.state == State.STOPPED:
@@ -1416,7 +1418,7 @@ class RPC:
         dataframe: DataFrame,
         last_analyzed: datetime,
         selected_cols: list[str] | None,
-        annotations: list[AnnotationType],
+        annotations: list,
     ) -> dict[str, Any]:
         has_content = len(dataframe) != 0
         dataframe_columns = list(dataframe.columns)

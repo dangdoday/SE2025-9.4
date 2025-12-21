@@ -5,7 +5,7 @@ from pydantic import AwareDatetime, BaseModel, RootModel, SerializeAsAny, model_
 
 from binancebot.constants import DL_DATA_TIMEFRAMES, IntOrInf
 from binancebot.enums import MarginMode, OrderTypeValues, SignalDirection, TradingMode
-from binancebot.ft_types import AnnotationType, ValidExchangesType
+from binancebot.ft_types import ValidExchangesType
 from binancebot.rpc.api_server.webserver_bgwork import ProgressTask
 
 
@@ -256,7 +256,6 @@ class ShowConfig(BaseModel):
     entry_pricing: dict[str, Any]
     bot_name: str
     state: str
-    runmode: str
     position_adjustment_enable: bool
     max_entry_position_adjustment: int
 
@@ -551,7 +550,7 @@ class PairHistory(BaseModel):
     columns: list[str]
     all_columns: list[str] = []
     data: SerializeAsAny[list[Any]]
-    annotations: list[AnnotationType] | None = None
+    annotations: list | None = None
     length: int
     buy_signals: int
     sell_signals: int
@@ -663,3 +662,33 @@ class CustomDataEntry(BaseModel):
 class ListCustomData(BaseModel):
     trade_id: int
     custom_data: list[CustomDataEntry]
+
+
+class ExchangeConfigPayload(BaseModel):
+    """Payload for setting exchange API credentials and trading mode"""
+    api_key: str
+    secret_key: str
+    trading_mode: str = "spot"  # "spot" or "futures"
+    margin_mode: str | None = None  # "isolated" or "cross" (only for futures)
+    db_url: str | None = None  # Optional database path
+
+
+class CreateUserPayload(BaseModel):
+    username: str
+    password: str
+
+
+class ApiProfile(BaseModel):
+    id: str
+    name: str
+    api_key: str
+    secret_key: str
+    trading_mode: str = "spot"
+    margin_mode: str | None = None
+    is_testnet: bool = False
+
+
+class ApiProfileListResponse(BaseModel):
+    profiles: list[ApiProfile]
+
+

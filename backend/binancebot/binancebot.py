@@ -206,8 +206,6 @@ class BinanceBot(LoggingMixin):
             self.strategy.ft_bot_cleanup()
 
         self.rpc.cleanup()
-        if self.emc:
-            self.emc.shutdown()
         self.exchange.close()
         try:
             Trade.commit()
@@ -1141,6 +1139,7 @@ class BinanceBot(LoggingMixin):
             enter_limit_requested,
             self.strategy.stoploss if not mode == "pos_adjust" else 0.0,
             leverage,
+            ignore_reserve=(mode == "force_entry"),
         )
         max_stake_amount = self.exchange.get_max_pair_stake_amount(
             pair, enter_limit_requested, leverage
@@ -1168,7 +1167,12 @@ class BinanceBot(LoggingMixin):
             min_stake_amount=min_stake_amount,
             max_stake_amount=max_stake_amount,
             trade_amount=trade.stake_amount if trade else None,
+            mode=mode,
         )
+
+        if mode == "force_entry":
+            # Add a small buffer (1%) to ensure we don't fall below MIN_NOTIONAL after rounding
+            stake_amount *= 1.01
 
         return enter_limit_requested, stake_amount, leverage
 
