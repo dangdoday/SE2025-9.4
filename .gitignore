@@ -13,6 +13,7 @@ dist-ssr/
 # Logs
 *.log
 npm-debug.log*
+user_data/logs/*.log
 
 # Local env files
 .env.local
@@ -27,6 +28,20 @@ Thumbs.db
 auto-imports.d.ts
 components.d.ts
 
-# Large files - hyperopt results
+# Large files - hyperopt and backtest results (không cần để chạy)
 user_data/hyperopt_results/*.fthypt
 user_data/backtest_results/*.json
+user_data/backtest_results/*.meta.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# Backups
+*.bak
+*.backup
+backups/
