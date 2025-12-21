@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+user_data/logs/*.log
+
+# Local env files
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Auto-generated
+*.local
+auto-imports.d.ts
+components.d.ts
+
+# Large files - hyperopt and backtest results (không cần để chạy)
+user_data/hyperopt_results/*.fthypt
+user_data/backtest_results/*.json
+user_data/backtest_results/*.meta.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+
+# Backups
+*.bak
+*.backup
+backups/
