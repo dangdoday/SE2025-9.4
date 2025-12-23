@@ -151,12 +151,15 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-    Dev[Developer Machine] -->|Docker build| Image[Docker Image]
+    Dev[Developer Machine] -->|docker compose build| Image[Docker Image]
     Image --> Container[BinanceBot Container]
-    Container --> API8080[Expose :8080]
-    Container --> VolConfig[(config/ volume)]
-    Container --> VolData[(data/ volume)]
-    UIClient[Browser] --> API8080
+
+    Container --> API8080[API Server :8080]
+    Container --> VolConfig[(/config/config.json)]
+    Container --> VolData[(/app/data)]
+    Container --> VolUserData[(/app/user_data)]
+
+    Browser[Browser / Web Client] -->|HTTP| API8080
 ```
 
 ## 6. Technology Stack
@@ -214,12 +217,28 @@ SE2025-9.4/
 ```
 
 ## 9. Usage
+Truy cập UI:
+- Docker
+  - `http://localhost:8080`
+  - hoặc `http://localhost` (nếu dùng map `80:8080`)
+- Vite dev (frontend riêng): `http://localhost:3000`
 
-- Mở UI tại `http://localhost:8080` (Docker) hoặc `http://localhost:3000` (Vite dev).
-- Đăng nhập bằng tài khoản cấu hình trong `config/config.json`.
-- Admin: start/stop bot, force entry/exit, theo dõi logs.
-- User: xem dashboard, hiệu suất, charts, lịch sử trade.
-- Copy trading: bật theo profile với `copy_enabled` và `allocation_pct`.
+Đăng nhập bằng tài khoản khai báo trong config/config.json
+
+Phân quyền:
+- Admin:
+  - Start / Stop bot
+  - Force entry / exit
+  - Reload config
+  - Theo dõi logs & trạng thái runtime
+- User:
+  - Xem dashboard
+  - Hiệu suất (PnL, balance)
+  - Charts & lịch sử giao dịch
+
+Copy trading: Bật theo từng profile:
+- `copy_enabled: true`
+- `allocation_pct`: % vốn phân bổ cho copy trade
 
 ## 10. Backtest Results
 
