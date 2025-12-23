@@ -31,7 +31,6 @@
 Dự án xây dựng một hệ thống giao dịch tự động cho sàn Binance, kết hợp bot giao dịch
 và giao diện web quản trị. Hệ thống giúp người dùng theo dõi trạng thái bot, quản lý
 chiến lược, xem lịch sử giao dịch, và điều khiển vận hành theo cơ chế phân quyền.
-Đây là dự án kết thúc học phần, nhấn mạnh tư duy kiến trúc và khả năng triển khai thực tế.
 
 ## 2. Goals
 
