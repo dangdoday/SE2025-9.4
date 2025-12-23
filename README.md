@@ -94,21 +94,27 @@ Các lớp giao tiếp bằng REST/WebSocket, đảm bảo phân tách trách nh
 
 ### 5.2 Architecture Diagram
 
-Figure 1 illustrates the overall system architecture.
+The overall system architecture.
+
 
 ```mermaid
-flowchart LR
-    User[User/Admin] --> UI[Web UI (Vue 3)]
-    UI <--> API[API Server (FastAPI)]
-    API --> Auth[JWT Auth & Profiles]
-    API --> Config[Config Loader]
-    API --> Bot[Trading Engine]
-    Bot --> Strategy[Strategy Engine (RSI_EMA)]
-    Bot --> Exchange[Binance Exchange (CCXT)]
-    Bot --> Data[(SQLite Trades DB)]
-    Bot --> Logs[Logs/Events]
-    Bot --> Copy[Copy Trading Manager]
-    Copy --> Exchange
+graph LR;
+User[User/Admin] --> UI[Web UI - Vue 3];
+UI --> API[API Server - FastAPI];
+API --> UI;
+
+API --> Auth[JWT Auth & Profiles];
+API --> Config[Config Loader];
+API --> Bot[Trading Engine];
+
+Bot --> Strategy[Strategy Engine - RSI_EMA];
+Bot --> Exchange[Binance Exchange - CCXT];
+Bot --> Data[(SQLite Trades DB)];
+Bot --> Logs[Logs/Events];
+Bot --> Copy[Copy Trading Manager];
+
+Copy --> Exchange;
+
 ```
 
 ### 5.3 Use Case Diagram
