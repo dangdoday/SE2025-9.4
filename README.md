@@ -89,9 +89,6 @@ Các lớp giao tiếp bằng REST/WebSocket, đảm bảo phân tách trách nh
 
 ### 5.2 Architecture Diagram
 
-The overall system architecture.
-
-
 ```mermaid
 graph LR;
 User[User/Admin] --> UI[Web UI - Vue 3];
