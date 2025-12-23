@@ -18,7 +18,6 @@ const botStore = useBotStore()
         class="flex items-center justify-between py-2 px-2 hover:bg-dark-100 rounded transition-colors"
       >
         <span class="text-sm text-white">{{ pair }}</span>
-        <span class="text-xs text-gray-500">Active</span>
       </div>
       <div v-if="botStore.whitelist.length === 0" class="text-center py-4 text-gray-500 text-sm">
         No pairs in whitelist

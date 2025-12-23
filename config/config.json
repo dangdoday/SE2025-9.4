@@ -52,8 +52,6 @@
             "sandbox": false
         },
         "pair_whitelist": [
-            "ADA/USDT",
-            "AEVO/USDT",
             "APT/USDT",
             "ARB/USDT",
             "ATOM/USDT",
@@ -130,6 +128,10 @@
             {
                 "username": "admin123",
                 "password": "pbkdf2_sha256$100000$64caa3457032a8417f57057b3e58e614$ed5c75bb35138ae043095f7357c10ac82865939a886aeaf9c9c6bb2054521706"
+            },
+            {
+                "username": "binancebot",
+                "password": "pbkdf2_sha256$100000$d23f4f930817374124d52d0d2049e521$930440013eebceaddd9424c4deff0b170a8213dc505297610112c364cad665a0"
             }
         ],
         "profiles": [

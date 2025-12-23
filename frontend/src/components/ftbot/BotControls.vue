@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useBotStore } from '@/stores/botStore'
+import { isAdminUser } from '@/utils/auth'
 
 const botStore = useBotStore()
 const isLoading = ref(false)
+const isAdmin = computed(() => isAdminUser())
 
 async function handleStart() {
   isLoading.value = true
@@ -48,7 +50,7 @@ async function handleReloadConfig() {
       </div>
 
       <!-- Controls -->
-      <div class="flex gap-2">
+      <div v-if="isAdmin" class="flex gap-2">
         <button 
           v-if="!botStore.isBotRunning"
           @click="handleStart" 
@@ -72,6 +74,9 @@ async function handleReloadConfig() {
         >
           🔄 Reload
         </button>
+      </div>
+      <div v-else class="text-xs text-gray-400">
+        Tài khoản copy không thể bật/tắt bot trung tâm.
       </div>
     </div>
   </div>

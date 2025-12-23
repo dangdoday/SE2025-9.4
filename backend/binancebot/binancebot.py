@@ -27,6 +27,7 @@ from binancebot.enums import (
     State,
     TradingMode,
 )
+from binancebot.copy_trading import CopyTradingManager
 from binancebot.exceptions import (
     DependencyException,
     ExchangeError,
@@ -106,6 +107,7 @@ class BinanceBot(LoggingMixin):
         init_db(self.config["db_url"])
 
         self.wallets = Wallets(self.config, self.exchange)
+        self.copy_trader = CopyTradingManager(self.config, self.exchange)
 
         PairLocks.timeframe = self.config["timeframe"]
 
@@ -207,6 +209,7 @@ class BinanceBot(LoggingMixin):
 
         self.rpc.cleanup()
         self.exchange.close()
+        self.copy_trader.close()
         try:
             Trade.commit()
         except Exception:
@@ -578,6 +581,24 @@ class BinanceBot(LoggingMixin):
                 if prev_trade_amount != trade.amount:
                     # Cancel stoploss on exchange if the amount changed
                     trade = self.cancel_stoploss_on_exchange(trade)
+                # Fallback: close trade if a full exit order is filled but trade stays open.
+                if trade.is_open and not trade.has_open_orders:
+                    exit_orders = [
+                        o
+                        for o in trade.orders
+                        if o.ft_order_side == trade.exit_side
+                        and o.status == "closed"
+                        and (o.filled or 0) > 0
+                    ]
+                    if exit_orders:
+                        exit_orders.sort(key=lambda o: o.order_filled_date or o.order_date)
+                        last_exit = exit_orders[-1]
+                        exit_amount = last_exit.safe_amount_after_fee
+                        tolerance = max(trade.amount * 0.005, constants.MATH_CLOSE_PREC)
+                        if exit_amount + tolerance >= trade.amount:
+                            trade.exit_reason = ExitType.SOLD_ON_EXCHANGE.value
+                            trade.close_date = last_exit.order_filled_date or trade.close_date
+                            trade.close(last_exit.safe_price or trade.open_rate, show_msg=False)
             Trade.commit()
 
         except ExchangeError:
@@ -1029,6 +1050,18 @@ class BinanceBot(LoggingMixin):
         trade.recalc_trade_from_orders()
         Trade.session.add(trade)
         Trade.commit()
+
+        try:
+            self.copy_trader.mirror_entry(
+                trade.id,
+                pair,
+                side,
+                enter_limit_requested,
+                self.config["stake_currency"],
+                mode,
+            )
+        except Exception as exc:
+            logger.warning("Copy trading entry failed: %s", exc)
 
         # Updating wallets
         self.wallets.update()
@@ -2149,6 +2182,12 @@ class BinanceBot(LoggingMixin):
         if order.get("status", "unknown") in ("closed", "expired"):
             self.update_trade_state(trade, order_obj.order_id, order)
         Trade.commit()
+
+        if not sub_trade_amt:
+            try:
+                self.copy_trader.mirror_exit(trade.id, trade.pair, trade.exit_side)
+            except Exception as exc:
+                logger.warning("Copy trading exit failed: %s", exc)
 
         return True
 

@@ -5,6 +5,18 @@ export type ConnectionMode = 'bot' | 'binance' | 'none'
 export type TradingMode = 'spot' | 'futures'
 export type MarginMode = 'isolated' | 'cross'
 
+const defaultApiUrl = () => {
+    if (typeof window !== 'undefined' && window.location) {
+        const { hostname, origin } = window.location
+        const isLocal =
+            hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
+        if (!isLocal) {
+            return origin
+        }
+    }
+    return 'http://localhost:8080'
+}
+
 export const useSettingsStore = defineStore('settings', () => {
     // Connection Mode
     const connectionMode = ref<ConnectionMode>(
@@ -12,9 +24,20 @@ export const useSettingsStore = defineStore('settings', () => {
     )
 
     // API Settings
-    const apiUrl = ref(localStorage.getItem('api_url') || 'http://localhost:8080')
+    const storedApiUrl = localStorage.getItem('api_url')
+    const apiUrl = ref(storedApiUrl || defaultApiUrl())
     const username = ref(localStorage.getItem('username') || '')
     const token = ref(localStorage.getItem('bot_token') || '')
+
+    if (!storedApiUrl) {
+        localStorage.setItem('api_url', apiUrl.value)
+    } else if (storedApiUrl === 'http://localhost:8080') {
+        const resolved = defaultApiUrl()
+        if (resolved !== storedApiUrl) {
+            apiUrl.value = resolved
+            localStorage.setItem('api_url', resolved)
+        }
+    }
 
     // Binance Settings
     const binanceApiKey = ref(localStorage.getItem('binance_api_key') || '')

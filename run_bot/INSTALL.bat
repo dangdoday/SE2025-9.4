@@ -56,7 +56,7 @@ echo You can now run START_BOT.bat to start the bot.
 echo.
 echo Default Login:
 echo   Username: admin
-echo   Password: binancebot
+echo   Password: pass789
 echo.
 echo IMPORTANT: Edit config/config.json with your Binance API keys!
 echo.

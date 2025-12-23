@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useBotStore } from '@/stores/botStore'
+import { isAdminUser } from '@/utils/auth'
 
 const emit = defineEmits(['close'])
 const botStore = useBotStore()
@@ -10,8 +11,13 @@ const price = ref<number | undefined>()
 const stakeAmount = ref<number | undefined>()
 const isLoading = ref(false)
 const error = ref('')
+const isAdmin = computed(() => isAdminUser())
 
 async function handleSubmit() {
+  if (!isAdmin.value) {
+    error.value = 'Only admin can create trades.'
+    return
+  }
   if (!pair.value) {
     error.value = 'Please select a pair'
     return
@@ -33,6 +39,9 @@ async function handleSubmit() {
 
 <template>
   <div class="space-y-4">
+    <div v-if="!isAdmin" class="p-3 rounded-lg bg-dark-100 border border-dark-50 text-sm text-gray-400">
+      Only admin can create force-entry trades.
+    </div>
     <!-- Error -->
     <div v-if="error" class="p-3 rounded-lg bg-danger/10 border border-danger/20">
       <p class="text-sm text-danger">{{ error }}</p>

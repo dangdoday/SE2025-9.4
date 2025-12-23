@@ -131,19 +131,10 @@ def check_api_ownership(
         
     api_cfg = file_config.get("api_server", {})
     
-    # 1. Check Primary Admin
     primary_admin = api_cfg.get("username", "admin")
     if user == primary_admin:
-        # If active key matches admin's direct config keys
-        if active_key == api_cfg.get("key"):
-            logger.info("[check_api_ownership] User is admin, key matches direct config")
-            return True
-        # Or matches one of admin's profiles
-        profiles = api_cfg.get("profiles", [])
-        if any(p.get("api_key") == active_key for p in profiles):
-            logger.info("[check_api_ownership] User is admin, key matches admin's profile")
-            return True
-        logger.info(f"[check_api_ownership] User is admin but key doesn't match any profile")
+        logger.info("[check_api_ownership] User is primary admin - allowing access")
+        return True
     else:
         # 2. Check Additional Users
         logger.info(f"[check_api_ownership] User {user} is not primary admin ({primary_admin}), checking users list")
@@ -162,6 +153,17 @@ def check_api_ownership(
                 
     logger.info(f"[check_api_ownership] DENYING access for user {user}")
     return False
+
+
+def require_admin(
+    config: dict[str, Any] = Depends(get_config),
+    user: str = Depends(http_basic_or_jwt_token),
+) -> bool:
+    api_cfg = config.get("api_server", {})
+    primary_admin = api_cfg.get("username", "admin")
+    if user != primary_admin:
+        raise HTTPException(status_code=403, detail="Admin only")
+    return True
 
 
 @router_public.get("/ping", response_model=Ping)
@@ -354,6 +356,11 @@ def trade_reload(tradeid: int, rpc: RPC = Depends(get_rpc)):
     return rpc._rpc_trade_status([tradeid])[0]
 
 
+@router.post("/trades/reload", tags=["trading"])
+def trades_reload(rpc: RPC = Depends(get_rpc)):
+    return rpc._rpc_reload_open_trades_from_exchange()
+
+
 @router.get("/trades/open/custom-data", response_model=list[ListCustomData], tags=["trading"])
 def list_open_trades_custom_data(
     key: str | None = Query(None, description="Optional key to filter data"),
@@ -399,7 +406,11 @@ def show_config(rpc: RPC | None = Depends(get_rpc_optional), config=Depends(get_
 # /forcebuy is deprecated with short addition. use /forceentry instead
 @router.post("/forceenter", response_model=ForceEnterResponse, tags=["trading"])
 @router.post("/forcebuy", response_model=ForceEnterResponse, tags=["trading"])
-def force_entry(payload: ForceEnterPayload, rpc: RPC = Depends(get_rpc)):
+def force_entry(
+    payload: ForceEnterPayload,
+    rpc: RPC = Depends(get_rpc),
+    is_admin: bool = Depends(require_admin),
+):
     ordertype = payload.ordertype.value if payload.ordertype else None
 
     trade = rpc._rpc_force_entry(
@@ -423,7 +434,11 @@ def force_entry(payload: ForceEnterPayload, rpc: RPC = Depends(get_rpc)):
 # /forcesell is deprecated with short addition. use /forceexit instead
 @router.post("/forceexit", response_model=ResultMsg, tags=["trading"])
 @router.post("/forcesell", response_model=ResultMsg, tags=["trading"])
-def forceexit(payload: ForceExitPayload, rpc: RPC = Depends(get_rpc)):
+def forceexit(
+    payload: ForceExitPayload,
+    rpc: RPC = Depends(get_rpc),
+    is_admin: bool = Depends(require_admin),
+):
     ordertype = payload.ordertype.value if payload.ordertype else None
     return rpc._rpc_force_exit(str(payload.tradeid), ordertype, amount=payload.amount)
 
@@ -475,32 +490,30 @@ def add_locks(payload: list[LocksPayload], rpc: RPC = Depends(get_rpc)):
 @router.get("/logs", response_model=Logs, tags=["info"])
 def logs(
     limit: int | None = None,
-    is_owner: bool = Depends(check_api_ownership)
+    is_admin: bool = Depends(require_admin),
 ):
-    if not is_owner:
-        return {"log_count": 0, "logs": []}
     return RPC._rpc_get_logs(limit)
 
 
 @router.post("/start", response_model=StatusMsg, tags=["botcontrol"])
-def start(rpc: RPC = Depends(get_rpc)):
+def start(rpc: RPC = Depends(get_rpc), is_admin: bool = Depends(require_admin)):
     return rpc._rpc_start()
 
 
 @router.post("/stop", response_model=StatusMsg, tags=["botcontrol"])
-def stop(rpc: RPC = Depends(get_rpc)):
+def stop(rpc: RPC = Depends(get_rpc), is_admin: bool = Depends(require_admin)):
     return rpc._rpc_stop()
 
 
 @router.post("/pause", response_model=StatusMsg, tags=["botcontrol"])
 @router.post("/stopentry", response_model=StatusMsg, tags=["botcontrol"])
 @router.post("/stopbuy", response_model=StatusMsg, tags=["botcontrol"])
-def pause(rpc: RPC = Depends(get_rpc)):
+def pause(rpc: RPC = Depends(get_rpc), is_admin: bool = Depends(require_admin)):
     return rpc._rpc_pause()
 
 
 @router.post("/reload_config", response_model=StatusMsg, tags=["botcontrol"])
-def reload_config(rpc: RPC = Depends(get_rpc)):
+def reload_config(rpc: RPC = Depends(get_rpc), is_admin: bool = Depends(require_admin)):
     return rpc._rpc_reload_config()
 
 
@@ -686,7 +699,8 @@ def set_exchange_config(
     payload: ExchangeConfigPayload, 
     rpc: RPC = Depends(get_rpc), 
     config=Depends(get_config),
-    user: str = Depends(http_basic_or_jwt_token)
+    user: str = Depends(http_basic_or_jwt_token),
+    is_admin: bool = Depends(require_admin),
 ):
     """Update exchange API credentials and trading mode at runtime.
     
@@ -733,6 +747,24 @@ def set_exchange_config(
         # Read current config
         with open(config_path, 'r') as f:
             file_config = json.load(f)
+
+        # Track which profile is active so copy trading can skip the master account
+        api_cfg = file_config.setdefault("api_server", {})
+        active_profile_id = None
+        profile_lists = [api_cfg.get("profiles", [])]
+        for u in api_cfg.get("users", []):
+            profile_lists.append(u.get("profiles", []))
+        for profiles in profile_lists:
+            for p in profiles:
+                if p.get("api_key") == payload.api_key:
+                    active_profile_id = p.get("id")
+                    break
+            if active_profile_id:
+                break
+        if active_profile_id:
+            api_cfg["active_profile_id"] = active_profile_id
+        else:
+            api_cfg.pop("active_profile_id", None)
         
         # Update exchange credentials
         if 'exchange' not in file_config:

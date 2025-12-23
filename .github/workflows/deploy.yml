@@ -1,0 +1,72 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Prepare web UI bundle
+        run: |
+          rm -rf backend/binancebot/rpc/api_server/ui/installed
+          mkdir -p backend/binancebot/rpc/api_server/ui/installed
+          cp -r frontend/dist/* backend/binancebot/rpc/api_server/ui/installed/
+          echo "${GITHUB_SHA}" > backend/binancebot/rpc/api_server/ui/installed/.uiversion
+
+      - name: Sync files to server
+        uses: burnett01/rsync-deployments@5.2
+        with:
+          switches: >-
+            -avzr --delete
+            --exclude='.git/'
+            --exclude='.github/'
+            --exclude='.venv/'
+            --exclude='data/'
+            --exclude='config/config.json'
+            --exclude='frontend/node_modules/'
+            --exclude='frontend/dist/'
+            --exclude='user_data/aimlmodels/'
+            --exclude='user_data/backtest_results/'
+            --exclude='user_data/data/'
+            --exclude='user_data/hyperopts/'
+            --exclude='user_data/hyperopt_results/'
+            --exclude='user_data/logs/'
+            --exclude='user_data/notebooks/'
+            --exclude='user_data/plot/'
+          path: ./
+          remote_path: ${{ secrets.DEPLOY_PATH }}
+          remote_host: ${{ secrets.SSH_HOST }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_key: ${{ secrets.SSH_KEY }}
+          remote_port: ${{ secrets.SSH_PORT || '22' }}
+
+      - name: Install deps and restart service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          script: |
+            cd "${{ secrets.DEPLOY_PATH }}"
+            bash scripts/post_deploy.sh

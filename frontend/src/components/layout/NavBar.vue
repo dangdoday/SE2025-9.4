@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useBotStore } from '@/stores/botStore'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { isAdminUser } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,12 +12,20 @@ const settingsStore = useSettingsStore()
 
 const isMobileMenuOpen = ref(false)
 
-const navItems = [
+const baseNavItems = [
   { label: 'Dashboard', to: '/dashboard', icon: '📊' },
   { label: 'Trading', to: '/trade', icon: '💹' },
   { label: 'Charts', to: '/graph', icon: '📈' },
   { label: 'Settings', to: '/settings', icon: '⚙️' }
 ]
+const isAdmin = computed(() => isAdminUser())
+const navItems = computed(() => {
+  const items = [...baseNavItems]
+  if (isAdmin.value) {
+    items.push({ label: 'Logs', to: '/logs', icon: '📝' })
+  }
+  return items
+})
 
 const isActive = (path: string) => route.path === path
 

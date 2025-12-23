@@ -26,8 +26,14 @@ const isLoading = ref(false)
 const isLoadingMore = ref(false)
 const error = ref('')
 const currentPrice = ref(0)
-const priceChange = ref(0)
 const candleCount = ref(0)
+
+const stats24h = ref({
+  priceChangePercent: 0,
+  highPrice: 0,
+  lowPrice: 0,
+  quoteVolume: 0
+})
 
 let ws: WebSocket | null = null
 let refreshInterval: number | null = null
@@ -43,37 +49,84 @@ function getBinanceInterval(tf: string): string {
   return mapping[tf] || '4h'
 }
 
-// Fetch data from Binance public API - max 1000 candles per request
+// Fetch data via Vite proxy (avoids CORS and ISP blocks without using Bot Backend)
 async function fetchFromBinance(pair: string, timeframe: string, limit = 1000, endTime?: number) {
   const symbol = pair.replace('/', '')
   const interval = getBinanceInterval(timeframe)
-  let url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+  
+  // Use local proxy path defined in vite.config.ts
+  let url = `/binance-proxy/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
   if (endTime) {
     url += `&endTime=${endTime}`
   }
   
-  const res = await axios.get(url)
-  // Binance klines format: [openTime, open, high, low, close, volume, closeTime, ...]
-  return res.data.map((k: any) => ({
-    time: k[0],
-    open: parseFloat(k[1]),
-    high: parseFloat(k[2]),
-    low: parseFloat(k[3]),
-    close: parseFloat(k[4]),
-    volume: parseFloat(k[5])
-  }))
+  try {
+    const res = await axios.get(url)
+    if (!Array.isArray(res.data)) {
+      throw new Error('Invalid Binance response')
+    }
+    return res.data.map((k: any) => ({
+      time: Number(k[0]),
+      open: parseFloat(k[1]),
+      high: parseFloat(k[2]),
+      low: parseFloat(k[3]),
+      close: parseFloat(k[4]),
+      volume: parseFloat(k[5])
+    }))
+  } catch (err: any) {
+    const message =
+      err?.response?.data?.msg ||
+      err?.response?.data?.message ||
+      err?.message ||
+      'Không thể tải dữ liệu từ Binance (Proxy Error)'
+    console.error('Failed to fetch from Binance proxy:', err)
+    throw new Error(message)
+  }
 }
 
+const anchorPrice24h = ref(0)
+
+async function fetch24hStats() {
+  const symbol = props.pair.replace('/', '')
+  try {
+    const res = await axios.get(`/binance-proxy/api/v3/ticker/24hr?symbol=${symbol}`)
+    stats24h.value = {
+      priceChangePercent: parseFloat(res.data.priceChangePercent),
+      highPrice: parseFloat(res.data.highPrice),
+      lowPrice: parseFloat(res.data.lowPrice),
+      quoteVolume: parseFloat(res.data.quoteVolume)
+    }
+    anchorPrice24h.value = parseFloat(res.data.openPrice)
+  } catch (err) {
+    console.warn('Failed to fetch 24h stats:', err)
+  }
+}
+
+// List of Binance stream endpoints
+const STREAM_ENDPOINTS = [
+  'stream.binance.com',
+  'stream1.binance.com',
+  'stream2.binance.com',
+  'stream3.binance.com'
+]
+
 // Connect to Binance WebSocket for real-time updates
-function connectWebSocket() {
-  if (ws) {
+function connectWebSocket(endpointIdx = 0) {
+  if (endpointIdx >= STREAM_ENDPOINTS.length) {
+    console.error('All WebSocket endpoints failed')
+    return
+  }
+
+  if (ws && endpointIdx === 0) {
     ws.close()
   }
   
   const symbol = props.pair.replace('/', '').toLowerCase()
   const interval = getBinanceInterval(props.timeframe)
-  const wsUrl = `wss://stream.binance.com:9443/ws/${symbol}@kline_${interval}`
+  const endpoint = STREAM_ENDPOINTS[endpointIdx]
+  const wsUrl = `wss://${endpoint}:9443/ws/${symbol}@kline_${interval}`
   
+  console.log(`Connecting to WebSocket: ${wsUrl}`)
   ws = new WebSocket(wsUrl)
   
   ws.onmessage = (event) => {
@@ -81,8 +134,15 @@ function connectWebSocket() {
       const data = JSON.parse(event.data)
       if (data.k) {
         const kline = data.k
+        
+        // IMPORTANT: Validate that this data is for the current pair
+        const expectedSymbol = props.pair.replace('/', '').toUpperCase()
+        if (kline.s !== expectedSymbol) {
+          return
+        }
+        
         const newCandle = {
-          time: kline.t,
+          time: Number(kline.t),
           open: parseFloat(kline.o),
           high: parseFloat(kline.h),
           low: parseFloat(kline.l),
@@ -90,45 +150,53 @@ function connectWebSocket() {
           volume: parseFloat(kline.v)
         }
         
-        // Update current price
         currentPrice.value = newCandle.close
         
-        // Update or add the latest candle
+        // Update 24h percentage change based on ticker anchor
+        if (anchorPrice24h.value > 0) {
+          stats24h.value.priceChangePercent = ((newCandle.close - anchorPrice24h.value) / anchorPrice24h.value) * 100
+        }
+        
         if (candleData.length > 0) {
-          const lastCandle = candleData[candleData.length - 1]
-          if (lastCandle.time === newCandle.time) {
+          // Find if this candle already exists in our data
+          let foundIdx = -1
+          for (let i = candleData.length - 1; i >= Math.max(0, candleData.length - 10); i--) {
+            if (Number(candleData[i].time) === newCandle.time) {
+              foundIdx = i
+              break
+            }
+          }
+          
+          if (foundIdx !== -1) {
             // Update existing candle
-            candleData[candleData.length - 1] = newCandle
-          } else {
-            // New candle - just add, don't remove old ones
+            candleData[foundIdx] = newCandle
+          } else if (newCandle.time > Number(candleData[candleData.length - 1].time)) {
+            // Only add if it's a new candle in the future
             candleData.push(newCandle)
+            if (candleData.length > 2000) candleData.shift() // Keep memory usage low
           }
           
-          // Calculate price change from first candle
-          if (candleData.length > 0) {
-            const firstOpen = candleData[0].open
-            priceChange.value = ((newCandle.close - firstOpen) / firstOpen) * 100
-          }
-          
+          candleCount.value = candleData.length
           updateChart()
         }
       }
     } catch (e) {
-      console.error('WebSocket parse error:', e)
+      console.error('WebSocket update error:', e)
     }
   }
   
   ws.onerror = (error) => {
-    console.error('WebSocket error:', error)
+    console.warn(`WebSocket error on ${endpoint}:`, error)
   }
   
-  ws.onclose = () => {
-    // Reconnect after 5 seconds
-    setTimeout(() => {
-      if (props.pair && props.timeframe) {
-        connectWebSocket()
-      }
-    }, 5000)
+  ws.onclose = (event) => {
+    if (event.code !== 1000) {
+      setTimeout(() => {
+        if (props.pair && props.timeframe) {
+          connectWebSocket((endpointIdx + 1) % STREAM_ENDPOINTS.length)
+        }
+      }, 5000)
+    }
   }
 }
 
@@ -139,23 +207,35 @@ async function loadData() {
   error.value = ''
   
   try {
-    candleData = await fetchFromBinance(props.pair, props.timeframe)
+    const results = await Promise.allSettled([
+      fetchFromBinance(props.pair, props.timeframe),
+      fetch24hStats()
+    ])
+
+    if (results[0].status === 'rejected') {
+      throw results[0].reason
+    }
+
+    candleData = results[0].value
     candleCount.value = candleData.length
     
     if (candleData.length > 0) {
       currentPrice.value = candleData[candleData.length - 1].close
-      const firstOpen = candleData[0].open
-      priceChange.value = ((currentPrice.value - firstOpen) / firstOpen) * 100
+    } else {
+      error.value = 'No data available for this pair.'
+      return
     }
     
     updateChart()
-    
-    // Connect WebSocket for real-time updates
     connectWebSocket()
+
+    if (results[1].status === 'rejected') {
+      console.warn('Failed to load 24h stats:', results[1].reason)
+    }
     
   } catch (err: any) {
-    console.error('Failed to load candles:', err)
-    error.value = 'Không thể tải dữ liệu'
+    console.error('Failed to load chart data:', err)
+    error.value = err?.message || 'Unable to load data.'
   } finally {
     isLoading.value = false
   }
@@ -177,10 +257,6 @@ async function loadMoreHistory() {
       // Prepend older data
       candleData = [...olderData, ...candleData]
       candleCount.value = candleData.length
-      
-      // Calculate new price change
-      const firstOpen = candleData[0].open
-      priceChange.value = ((currentPrice.value - firstOpen) / firstOpen) * 100
       
       updateChart()
     }
@@ -286,9 +362,9 @@ function updateChart() {
               color: isProfit ? '#0ECB8180' : '#F6465D80',
               width: 1
             },
-            data: [
-              { coord: [entryIdx, trade.open_rate] },
-              { coord: [exitIdx, trade.close_rate] }
+            coords: [
+              [entryIdx, trade.open_rate],
+              [exitIdx, trade.close_rate]
             ]
           })
         }
@@ -301,12 +377,12 @@ function updateChart() {
     animation: false,
     title: {
       text: `${props.pair}`,
-      subtext: `$${currentPrice.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${priceChange.value >= 0 ? '+' : ''}${priceChange.value.toFixed(2)}%)`,
+      subtext: `$${currentPrice.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} (${stats24h.value.priceChangePercent >= 0 ? '+' : ''}${stats24h.value.priceChangePercent.toFixed(2)}%)`,
       left: 10,
       top: 5,
       textStyle: { color: '#F0B90B', fontSize: 16 },
       subtextStyle: { 
-        color: priceChange.value >= 0 ? '#0ECB81' : '#F6465D', 
+        color: stats24h.value.priceChangePercent >= 0 ? '#0ECB81' : '#F6465D', 
         fontSize: 14,
         fontWeight: 'bold'
       }
@@ -467,6 +543,13 @@ function cleanup() {
     clearInterval(refreshInterval)
     refreshInterval = null
   }
+  // Dispose ECharts instance to prevent memory leaks and __ec_inner errors
+  if (chart) {
+    chart.dispose()
+    chart = null
+  }
+  // Reset data to prevent stale data from being rendered
+  candleData = []
 }
 
 onMounted(() => {
@@ -487,7 +570,23 @@ watch(() => [props.pair, props.timeframe], () => {
 <template>
   <div class="relative w-full h-full min-h-[400px]">
     <!-- Header controls -->
-    <div class="absolute top-2 right-2 z-20 flex items-center gap-3 text-xs">
+    <div class="absolute top-2 right-2 z-20 flex items-center gap-4 text-[10px] md:text-xs">
+      <!-- 24h Stats -->
+      <div class="hidden md:flex items-center gap-4 border-r border-gray-700 pr-4 mr-1">
+        <div class="flex flex-col">
+          <span class="text-gray-500">24h Cao</span>
+          <span class="text-gray-200">${{ stats24h.highPrice.toLocaleString() }}</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-gray-500">24h Thấp</span>
+          <span class="text-gray-200">${{ stats24h.lowPrice.toLocaleString() }}</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-gray-500">24h Khối lượng</span>
+          <span class="text-gray-200">{{ (stats24h.quoteVolume / 1000000).toFixed(2) }}M USDT</span>
+        </div>
+      </div>
+
       <span v-if="isLoadingMore" class="text-primary flex items-center gap-1">
         ⏳ Đang tải...
       </span>

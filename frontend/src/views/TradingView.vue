@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useBotStore } from '@/stores/botStore'
 import TradeList from '@/components/ftbot/TradeList.vue'
 import ForceEntryForm from '@/components/ftbot/ForceEntryForm.vue'
 import BotControls from '@/components/ftbot/BotControls.vue'
 import PairListLive from '@/components/ftbot/PairListLive.vue'
+import { isAdminUser } from '@/utils/auth'
 
 const botStore = useBotStore()
 const activeTab = ref('open')
 const showForceEntry = ref(false)
+const isAdmin = computed(() => isAdminUser())
 let refreshInterval: number | null = null
 
 async function refreshTrades() {
@@ -38,7 +40,7 @@ onUnmounted(() => {
         <p class="text-gray-500 text-sm">Manage your active trades</p>
       </div>
       <div class="flex items-center gap-3">
-        <button @click="showForceEntry = true" class="btn btn-primary">
+        <button v-if="isAdmin" @click="showForceEntry = true" class="btn btn-primary">
           ➕ Force Entry
         </button>
         <button @click="refreshTrades" class="btn btn-outline">
@@ -100,6 +102,7 @@ onUnmounted(() => {
 
     <!-- Force Entry Dialog -->
     <Dialog 
+      v-if="isAdmin"
       v-model:visible="showForceEntry" 
       header="Force Entry" 
       :modal="true"

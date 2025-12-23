@@ -131,6 +131,7 @@ export const botApi = {
     trade: (id: number) => api.get(`/trade/${id}`),
     deleteTrade: (id: number) => api.delete(`/trades/${id}`),
     count: () => api.get('/count'),
+    reloadOpenTrades: () => api.post('/trades/reload'),
 
     // Force entry/exit
     forceEntry: (pair: string, price?: number, stakeAmount?: number) =>

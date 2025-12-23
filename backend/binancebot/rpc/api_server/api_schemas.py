@@ -686,6 +686,8 @@ class ApiProfile(BaseModel):
     trading_mode: str = "spot"
     margin_mode: str | None = None
     is_testnet: bool = False
+    copy_enabled: bool = False
+    allocation_pct: float = 0.0
 
 
 class ApiProfileListResponse(BaseModel):

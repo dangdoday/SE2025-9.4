@@ -31,9 +31,8 @@ taskkill /f /im node.exe 2>nul
 timeout /t 1 /nobreak >nul
 
 echo [2/4] Starting Backend (Port 8080)...
-:: Run from project root so user_data and data folders are found correctly
 set PYTHONPATH=%cd%\backend
-start "BinanceBot Backend" cmd /k "cd /d %cd% && python -m binancebot.main trade --config config\config.json"
+start "BinanceBot Backend" cmd /k "cd /d %cd% && python -m binancebot trade --config config/config.json"
 timeout /t 3 /nobreak >nul
 
 echo [3/4] Waiting for Backend to initialize...

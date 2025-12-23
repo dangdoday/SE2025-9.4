@@ -21,6 +21,10 @@ router = APIRouter()
 
 def _get_config_path(config: dict[str, Any]) -> Path:
     """Helper to locate the config.json file on disk."""
+    docker_config = Path("/config/config.json")
+    if docker_config.exists():
+        return docker_config
+
     config_path = None
     initial_files = config.get("initial_config_files")
     if initial_files and len(initial_files) > 0:
@@ -78,6 +82,11 @@ def save_exchange_config(
     try:
         # Try multiple ways to find the config file
         config_path = None
+
+        docker_config = Path("/config/config.json")
+        if docker_config.exists():
+            config_path = docker_config
+            logger.info(f"Using config from docker path: {config_path}")
         
         # Method 1: Use initial_config_files from running config
         initial_files = config.get("initial_config_files")
@@ -179,6 +188,10 @@ def save_auth_config(
         from binancebot.rpc.api_server.webserver import ApiServer
         
         config_path = None
+        docker_config = Path("/config/config.json")
+        if docker_config.exists():
+            config_path = docker_config
+
         # ... logic to find config_path ...
         initial_files = config.get("initial_config_files")
         if initial_files and len(initial_files) > 0:
@@ -255,6 +268,10 @@ def list_profiles(
             if u.get("username") == user:
                 profiles = u.get("profiles", [])
                 break
+
+    for profile in profiles:
+        profile.setdefault("copy_enabled", False)
+        profile.setdefault("allocation_pct", 0.0)
                 
     return {"profiles": profiles}
 

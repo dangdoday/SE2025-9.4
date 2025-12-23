@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useBotStore } from '@/stores/botStore'
 import { botApi } from '@/api/api'
+import { getUsernameFromToken, isAdminUser } from '@/utils/auth'
 
 const router = useRouter()
 const settingsStore = useSettingsStore()
@@ -17,6 +18,8 @@ interface ApiProfile {
   trading_mode: 'spot' | 'futures'
   margin_mode?: 'isolated' | 'cross'
   is_testnet: boolean
+  copy_enabled: boolean
+  allocation_pct: number
 }
 
 // Binance API Keys
@@ -30,29 +33,24 @@ const isLoading = ref(false)
 const message = ref('')
 const messageType = ref<'success' | 'error'>('success')
 const savedApiKey = ref('')
+const copyEnabled = ref(false)
+const allocationPct = ref(0)
 
 // Profiles state
 const profiles = ref<ApiProfile[]>([])
 const currentUsername = ref('')
-
-function getUsernameFromToken() {
-   const token = sessionStorage.getItem('bot_token');
-   if(!token) return 'admin'; 
-   try {
-       const base64Url = token.split('.')[1];
-       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-       const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-           return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-       }).join(''));
-       return JSON.parse(jsonPayload).identity.u || 'admin';
-   } catch(e) { return 'admin'; }
-}
+const isAdmin = computed(() => isAdminUser())
 
 // Load profiles from backend
 async function loadProfiles() {
   try {
     const res = await botApi.getProfiles()
-    profiles.value = res.data.profiles
+    const list = res.data.profiles as ApiProfile[]
+    profiles.value = list.map((profile) => ({
+      ...profile,
+      copy_enabled: profile.copy_enabled ?? false,
+      allocation_pct: profile.allocation_pct ?? 0
+    }))
   } catch (error) {
     console.error('Failed to load profiles:', error)
     profiles.value = []
@@ -94,7 +92,9 @@ async function checkAndImportLegacy() {
                   api_key: legacyKey,
                   secret_key: legacySecret,
                   trading_mode,
-                  is_testnet: false
+                  is_testnet: false,
+                  copy_enabled: false,
+                  allocation_pct: 0
                })
                
                // After importing, reload
@@ -120,13 +120,35 @@ onMounted(async () => {
     if (res.data.trading_mode) {
       tradingMode.value = res.data.trading_mode
     }
-    if (res.data.exchange?.key) {
+    if (isAdmin.value && res.data.exchange?.key) {
        savedApiKey.value = res.data.exchange.key
     }
   } catch (error) {
     // Ignore error
   }
 })
+
+function normalizeAllocation(value: number) {
+  if (!Number.isFinite(value)) {
+    return 0
+  }
+  return Math.min(100, Math.max(0, value))
+}
+
+async function saveProfileChanges(profile: ApiProfile) {
+  const allocation = normalizeAllocation(profile.allocation_pct)
+  const payload = {
+    ...profile,
+    allocation_pct: allocation
+  }
+  profile.allocation_pct = allocation
+  try {
+    await botApi.saveProfile(payload)
+    showMessage('Profile updated.', 'success')
+  } catch (e: any) {
+    showMessage(e.message || 'Failed to update profile', 'error')
+  }
+}
 
 async function saveBinanceConfig() {
   isLoading.value = true
@@ -150,46 +172,55 @@ async function saveBinanceConfig() {
       secret_key: binanceSecretKey.value,
       trading_mode: tradingMode.value,
       margin_mode: marginMode.value,
-      is_testnet: false
+      is_testnet: false,
+      copy_enabled: copyEnabled.value,
+      allocation_pct: normalizeAllocation(allocationPct.value)
     }
 
     // 1. Save to backend profiles
     await botApi.saveProfile(profilePayload)
     await loadProfiles()
     
-    // 2. Activate profile
-    const dbUrl = `sqlite:///tradesv3_${id}.sqlite`
+    if (isAdmin.value) {
+      // 2. Activate profile (admin only)
+      const dbUrl = `sqlite:///tradesv3_${id}.sqlite`
 
-    await botApi.setExchangeConfig(
-      binanceApiKey.value,
-      binanceSecretKey.value,
-      false,
-      tradingMode.value,
-      marginMode.value,
-      dbUrl
-    )
-    
-    await botApi.saveExchangeConfig(
-      binanceApiKey.value,
-      binanceSecretKey.value,
-      false,
-      tradingMode.value,
-      false
-    )
-    
-    try {
-      await botApi.reloadConfig()
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      await botStore.refreshAll()
-    } catch (reloadError) {
-      console.warn('Backend reload failed:', reloadError)
+      await botApi.setExchangeConfig(
+        binanceApiKey.value,
+        binanceSecretKey.value,
+        false,
+        tradingMode.value,
+        marginMode.value,
+        dbUrl
+      )
+
+      await botApi.saveExchangeConfig(
+        binanceApiKey.value,
+        binanceSecretKey.value,
+        false,
+        tradingMode.value,
+        false
+      )
+
+      try {
+        await botApi.reloadConfig()
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        await botStore.refreshAll()
+      } catch (reloadError) {
+        console.warn('Backend reload failed:', reloadError)
+      }
     }
     
-    showMessage(`✅ Đã lưu profile "${finalName}" và kích hoạt thành công!`, 'success')
+    const successMessage = isAdmin.value
+      ? `✅ Đã lưu profile "${finalName}" và kích hoạt thành công!`
+      : `✅ Đã lưu profile "${finalName}". Bạn có thể bật copy trading.`
+    showMessage(successMessage, 'success')
     savedApiKey.value = binanceApiKey.value
     profileName.value = ''
     binanceApiKey.value = ''
     binanceSecretKey.value = ''
+    copyEnabled.value = false
+    allocationPct.value = 0
   } catch (e: any) {
     showMessage(e.message || 'Lỗi khi lưu cấu hình Binance', 'error')
   } finally {
@@ -198,6 +229,10 @@ async function saveBinanceConfig() {
 }
 
 async function switchToProfile(profile: ApiProfile) {
+  if (!isAdmin.value) {
+    showMessage('Chỉ admin mới được chuyển tài khoản bot.', 'error')
+    return
+  }
   if (confirm(`Bạn có chắc muốn chuyển sang tài khoản "${profile.name}"? Bot sẽ reload lại.`)) {
     isLoading.value = true
     try {
@@ -255,6 +290,8 @@ function clearBinanceConfig() {
   binanceApiKey.value = ''
   binanceSecretKey.value = ''
   profileName.value = ''
+  copyEnabled.value = false
+  allocationPct.value = 0
   showMessage('Đã xóa trắng form', 'success')
 }
 
@@ -353,10 +390,36 @@ function maskKey(key: string) {
           </div>
         </div>
 
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-sm font-medium text-white">Copy trading</div>
+              <p class="text-xs text-gray-500">Mirror master trades from this bot</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" v-model="copyEnabled" class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+            </label>
+          </div>
+          <div>
+            <label class="label">Allocation %</label>
+            <input
+              v-model.number="allocationPct"
+              type="number"
+              class="input"
+              min="0"
+              max="100"
+              step="0.1"
+              :disabled="!copyEnabled"
+              placeholder="0"
+            />
+          </div>
+        </div>
+
         <!-- Buttons -->
         <div class="space-y-3 pt-4 border-t border-dark-100">
           <button @click="saveBinanceConfig" :disabled="isLoading" class="btn btn-primary w-full">
-            {{ isLoading ? '⏳ Đang xử lý...' : '💾 Lưu & Kích hoạt' }}
+            {{ isLoading ? '⏳ Đang xử lý...' : (isAdmin ? '💾 Lưu & Kích hoạt' : '💾 Lưu profile') }}
           </button>
           <button @click="clearBinanceConfig" class="btn btn-outline w-full">
             🗑️ Xóa form
@@ -380,9 +443,8 @@ function maskKey(key: string) {
         <div 
           v-for="profile in profiles" 
           :key="profile.id"
-          class="card hover:border-primary/50 transition-colors cursor-pointer group"
+          class="card hover:border-primary/50 transition-colors group"
           :class="{ 'border-primary ring-1 ring-primary/20': profile.api_key === savedApiKey }"
-          @click="switchToProfile(profile)"
         >
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -397,7 +459,7 @@ function maskKey(key: string) {
                 </h3>
                 <div class="flex items-center gap-2 text-xs text-gray-400 font-mono">
                   <span>{{ maskKey(profile.api_key) }}</span>
-                  <span v-if="profile.api_key === savedApiKey" class="px-1.5 py-0.5 rounded bg-success/20 text-success font-sans font-bold text-[10px]">ACTIVE</span>
+                  <span v-if="isAdmin && profile.api_key === savedApiKey" class="px-1.5 py-0.5 rounded bg-success/20 text-success font-sans font-bold text-[10px]">ACTIVE</span>
                 </div>
               </div>
             </div>
@@ -411,11 +473,45 @@ function maskKey(key: string) {
                 🗑️
               </button>
               <button 
+                v-if="isAdmin"
+                @click="switchToProfile(profile)"
                 class="btn btn-sm"
                 :class="profile.api_key === savedApiKey ? 'btn-success' : 'btn-outline'"
               >
                 {{ profile.api_key === savedApiKey ? 'Đang dùng' : 'Chuyển sang' }}
               </button>
+            </div>
+          </div>
+          <div class="mt-4 grid gap-3 sm:grid-cols-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-xs font-medium text-white">Copy trading</div>
+                <p class="text-[10px] text-gray-500">Mirror master trades</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  v-model="profile.copy_enabled"
+                  class="sr-only peer"
+                  @change="saveProfileChanges(profile)"
+                >
+                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              </label>
+            </div>
+            <div>
+              <label class="label text-xs">Allocation %</label>
+              <input
+                v-model.number="profile.allocation_pct"
+                type="number"
+                class="input"
+                min="0"
+                max="100"
+                step="0.1"
+                :disabled="!profile.copy_enabled"
+                placeholder="0"
+                @change="saveProfileChanges(profile)"
+                @blur="saveProfileChanges(profile)"
+              />
             </div>
           </div>
         </div>

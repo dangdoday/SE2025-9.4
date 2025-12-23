@@ -1,73 +1,15 @@
-# Docker
-*.log
-*.sqlite
-*.sqlite-shm
-*.sqlite-wal
-
-# Config files with secrets
+.git
+.github
+.venv
+data
+frontend/dist
+frontend/node_modules
 config/config.json
-config/login.json
-.env
-.env.local
-
-# User data
-user_data/logs/
-user_data/data/
-data/
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual environments
-venv/
-ENV/
-env/
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-frontend/dist/
-frontend/.vite/
-
-# OS
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# Backups
-*.bak
-*.backup
-backups/
-
-# Sensitive data
-*.pem
-*.key
-*.cert
+user_data/aimlmodels
+user_data/backtest_results
+user_data/data
+user_data/hyperopts
+user_data/hyperopt_results
+user_data/logs
+user_data/notebooks
+user_data/plot

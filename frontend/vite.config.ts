@@ -15,6 +15,11 @@ export default defineConfig({
             '/api': {
                 target: 'http://localhost:8080',
                 changeOrigin: true
+            },
+            '/binance-proxy': {
+                target: 'https://api.binance.com',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/binance-proxy/, '')
             }
         }
     }

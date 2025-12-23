@@ -28,6 +28,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('@/views/SettingsView.vue')
   },
   {
+    path: '/logs',
+    name: 'Logs',
+    component: () => import('@/views/LogView.vue')
+  },
+  {
     path: '/settings/api',
     name: 'ApiSettings',
     component: () => import('@/views/ApiSettings.vue')

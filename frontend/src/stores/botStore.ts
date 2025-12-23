@@ -55,6 +55,7 @@ export const useBotStore = defineStore('bot', () => {
     const strategies = ref<string[]>([])
     const logs = ref<any[]>([])
     const version = ref('')
+    let lastTradeSync = 0
 
     // Computed
     const openTradeCount = computed(() => openTrades.value.length)
@@ -196,6 +197,16 @@ export const useBotStore = defineStore('bot', () => {
 
     async function fetchTrades() {
         try {
+            const now = Date.now()
+            if (now - lastTradeSync > 30000) {
+                try {
+                    await botApi.reloadOpenTrades()
+                    lastTradeSync = now
+                } catch (syncError) {
+                    console.warn('Failed to sync open trades:', syncError)
+                }
+            }
+
             // Get open trades from /status endpoint (live open positions)
             const statusRes = await botApi.status()
             if (Array.isArray(statusRes.data)) {

@@ -10,7 +10,7 @@ const botStore = useBotStore()
 const settingsStore = useSettingsStore()
 
 // Bot connection
-const apiUrl = ref('http://localhost:8080')
+const apiUrl = ref(settingsStore.apiUrl)
 const username = ref('binancebot')
 const password = ref('')
 

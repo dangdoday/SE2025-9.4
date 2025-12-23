@@ -1,0 +1,18 @@
+[Unit]
+Description=BinanceBot trading service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/binancebot
+Environment=PYTHONPATH=/opt/binancebot/backend
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/binancebot/.venv/bin/python -m binancebot trade --config /etc/binancebot/config.json
+Restart=always
+RestartSec=5
+User=binancebot
+Group=binancebot
+
+[Install]
+WantedBy=multi-user.target

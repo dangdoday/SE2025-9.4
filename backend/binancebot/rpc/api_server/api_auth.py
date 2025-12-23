@@ -180,7 +180,8 @@ def token_login(
     pwd = form_data.password if form_data else (body.password if body else None)
     
     if user and pwd and verify_auth(api_config, user, pwd):
-        token_data = {"identity": {"u": user}}
+        is_admin = user == api_config.get("username", "admin")
+        token_data = {"identity": {"u": user, "admin": is_admin}}
         access_token = create_token(
             token_data,
             api_config.get("jwt_secret_key", "super-secret"),
@@ -206,7 +207,8 @@ def token_login(
 def token_refresh(token: str = Depends(oauth2_scheme), api_config=Depends(get_api_config)):
     # Refresh token
     u = get_user_from_token(token, api_config.get("jwt_secret_key", "super-secret"), "refresh")
-    token_data = {"identity": {"u": u}}
+    is_admin = u == api_config.get("username", "admin")
+    token_data = {"identity": {"u": u, "admin": is_admin}}
     access_token = create_token(
         token_data,
         api_config.get("jwt_secret_key", "super-secret"),
@@ -233,6 +235,10 @@ def register_user(
         
         # 1. Locate Config File
         config_path = None
+        docker_config = Path("/config/config.json")
+        if docker_config.exists():
+            config_path = docker_config
+
         initial_files = full_config.get("initial_config_files")
         if initial_files and len(initial_files) > 0:
             config_path = Path(initial_files[0])

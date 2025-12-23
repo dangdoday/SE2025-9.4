@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import axios from 'axios'
 import { useBotStore } from '@/stores/botStore'
 import CandleChartContainer from '@/components/charts/CandleChartContainer.vue'
 
@@ -31,14 +32,56 @@ const defaultPairs = [
 const pairs = ref<string[]>(defaultPairs)
 
 async function loadPairs() {
+  let loadedPairs: string[] = []
+
   try {
-    await botStore.fetchWhitelist()
-    if (botStore.whitelist && botStore.whitelist.length > 0) {
-      pairs.value = botStore.whitelist
+    const res = await axios.get('/binance-proxy/api/v3/ticker/price')
+    if (Array.isArray(res.data)) {
+      const list = res.data
+        .map((item: any) => item?.symbol)
+        .filter((symbol: string) => typeof symbol === 'string' && symbol.endsWith('USDT'))
+        .map((symbol: string) => `${symbol.slice(0, -4)}/USDT`)
+      if (list.length > 0) {
+        loadedPairs = Array.from(new Set(list))
+      }
     }
   } catch (error) {
-    console.log('Using default pairs list')
-    pairs.value = defaultPairs
+    console.warn('Failed to load Binance price list, trying exchangeInfo')
+  }
+
+  if (loadedPairs.length === 0) {
+    try {
+      const res = await axios.get('/binance-proxy/api/v3/exchangeInfo')
+      const symbols = res.data?.symbols || []
+      const list = symbols
+        .filter((s: any) => s.status === 'TRADING' && s.isSpotTradingAllowed && s.quoteAsset === 'USDT')
+        .map((s: any) => `${s.baseAsset}/${s.quoteAsset}`)
+      if (list.length > 0) {
+        loadedPairs = list
+      }
+    } catch (error) {
+      console.warn('Failed to load Binance exchangeInfo, falling back to whitelist')
+    }
+  }
+
+  if (loadedPairs.length > 0) {
+    pairs.value = loadedPairs.sort()
+  } else {
+    try {
+      await botStore.fetchWhitelist()
+      if (botStore.whitelist && botStore.whitelist.length > 0) {
+        pairs.value = botStore.whitelist
+      } else {
+        pairs.value = defaultPairs
+      }
+    } catch (error) {
+      console.log('Using default pairs list')
+      pairs.value = defaultPairs
+    }
+  }
+
+  if (pairs.value.length > 0 && !pairs.value.includes(selectedPair.value)) {
+    selectedPair.value = pairs.value[0]
   }
 }
 
@@ -65,10 +108,10 @@ onMounted(() => {
       
       <!-- Controls -->
       <div class="flex items-center gap-3">
-        <select v-model="selectedPair" class="input w-56">
+        <select v-model="selectedPair" class="input !w-72">
           <option v-for="pair in pairs" :key="pair" :value="pair">{{ pair }}</option>
         </select>
-        <select v-model="selectedTimeframe" class="input w-24">
+        <select v-model="selectedTimeframe" class="input !w-32">
           <option v-for="tf in timeframes" :key="tf" :value="tf">{{ tf }}</option>
         </select>
         <button @click="loadPairs" class="btn btn-outline text-sm">

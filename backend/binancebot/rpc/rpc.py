@@ -937,30 +937,60 @@ class RPC:
         self._binancebot.handle_onexchange_order(trade)
         return {"status": "Reloaded from orders from exchange"}
 
+    def _rpc_reload_open_trades_from_exchange(self) -> dict[str, int | str | bool]:
+        """
+        Reload all open trades from exchange orders.
+        Useful when trades were modified manually on the exchange.
+        """
+        trades = Trade.get_open_trades()
+        if not trades:
+            return {"reloaded": 0, "failed": 0}
+
+        if self._config.get("dry_run", False):
+            return {"reloaded": 0, "failed": 0, "skipped": True, "reason": "dry_run"}
+
+        reloaded = 0
+        failed = 0
+        for trade in trades:
+            try:
+                self._binancebot.handle_onexchange_order(trade)
+                reloaded += 1
+            except Exception as exc:
+                logger.warning("Failed to reload trade %s from exchange: %s", trade.id, exc)
+                failed += 1
+
+        return {"reloaded": reloaded, "failed": failed}
+
     def __exec_force_exit(
         self, trade: Trade, ordertype: str | None, amount: float | None = None
     ) -> bool:
-        # Check if there is there are open orders
-        trade_entry_cancelation_registry = []
-        for oo in trade.open_orders:
-            trade_entry_cancelation_res = {"order_id": oo.order_id, "cancel_state": False}
-            order = self._binancebot.exchange.fetch_order(oo.order_id, trade.pair)
+        try:
+            # Check if there is there are open orders
+            trade_entry_cancelation_registry = []
+            for oo in trade.open_orders:
+                trade_entry_cancelation_res = {"order_id": oo.order_id, "cancel_state": False}
+                order = self._binancebot.exchange.fetch_order(oo.order_id, trade.pair)
 
-            if order["side"] == trade.entry_side:
-                fully_canceled = self._binancebot.handle_cancel_enter(
-                    trade, order, oo, CANCEL_REASON["FORCE_EXIT"]
-                )
-                trade_entry_cancelation_res["cancel_state"] = fully_canceled
-                trade_entry_cancelation_registry.append(trade_entry_cancelation_res)
+                if order["side"] == trade.entry_side:
+                    fully_canceled = self._binancebot.handle_cancel_enter(
+                        trade, order, oo, CANCEL_REASON["FORCE_EXIT"]
+                    )
+                    trade_entry_cancelation_res["cancel_state"] = fully_canceled
+                    trade_entry_cancelation_registry.append(trade_entry_cancelation_res)
 
-            if order["side"] == trade.exit_side:
-                # Cancel order - so it is placed anew with a fresh price.
-                self._binancebot.handle_cancel_exit(trade, order, oo, CANCEL_REASON["FORCE_EXIT"])
+                if order["side"] == trade.exit_side:
+                    # Cancel order - so it is placed anew with a fresh price.
+                    self._binancebot.handle_cancel_exit(trade, order, oo, CANCEL_REASON["FORCE_EXIT"])
 
-        if all(tocr["cancel_state"] is False for tocr in trade_entry_cancelation_registry):
             if trade.has_open_orders:
-                # Order cancellation failed, so we can't exit.
-                return False
+                logger.warning(f"Trade {trade.id} has open orders in DB even after cancellation attempt. Proceeding with force exit anyway.")
+                # Order cancellation might have "failed" in DB update but succeeded on exchange,
+                # or user manually cancelled. We try to exit regardless.
+
+            # If trade was fully cancelled (e.g. entry order cancelled before any fill)
+            if not trade.is_open:
+                return True
+
             # Get current rate and execute sell
             current_rate = self._binancebot.exchange.get_rate(
                 trade.pair, side="exit", is_short=trade.is_short, refresh=True
@@ -980,12 +1010,32 @@ class RPC:
                     raise RPCException(f"Remaining amount of {remaining} would be too small.")
                 sub_amount = amount
 
+            # Check if amount to sell is valid (not 0)
+            amount_to_sell = sub_amount or trade.amount
+            if amount_to_sell <= 0:
+                 logger.warning(f"Trade {trade.id}: Amount to sell is {amount_to_sell}, closing trade locally.")
+                 trade.close_date = datetime.now(UTC)
+                 trade.is_open = False
+                 trade.exit_reason = ExitType.FORCE_EXIT.value
+                 Trade.commit()
+                 return True
+
             self._binancebot.execute_trade_exit(
                 trade, current_rate, exit_check, ordertype=order_type, sub_trade_amt=sub_amount
             )
 
             return True
-        return False
+
+        except Exception as e:
+            import traceback
+            crash_log = f"{datetime.now(UTC)} - CRASH in __exec_force_exit: {str(e)}\n{traceback.format_exc()}\n"
+            logger.exception("CRASH in __exec_force_exit")
+            try:
+                with open("crash_debug.log", "a", encoding="utf-8") as f:
+                    f.write(crash_log)
+            except:
+                pass
+            return False
 
     def _rpc_force_exit(
         self, trade_id: str, ordertype: str | None = None, *, amount: float | None = None

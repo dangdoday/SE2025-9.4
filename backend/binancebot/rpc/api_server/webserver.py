@@ -120,6 +120,7 @@ class ApiServer(RPCHandler):
         from binancebot.rpc.api_server.api_background_tasks import router as api_bg_tasks
         from binancebot.rpc.api_server.api_backtest import router as api_backtest
         from binancebot.rpc.api_server.api_download_data import router as api_download_data
+        from binancebot.rpc.api_server.api_binance_proxy import router as api_binance_proxy
         from binancebot.rpc.api_server.api_pair_history import router as api_pair_history
         from binancebot.rpc.api_server.api_pairlists import router as api_pairlists
         from binancebot.rpc.api_server.api_v1 import router as api_v1
@@ -161,6 +162,7 @@ class ApiServer(RPCHandler):
             prefix="/api/v1",
             dependencies=[Depends(http_basic_or_jwt_token), Depends(is_webserver_mode)],
         )
+        app.include_router(api_binance_proxy, prefix="")
         
         # Config save router - for saving API keys to file
         from binancebot.rpc.api_server.api_config import router as api_config

@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBotStore } from '@/stores/botStore'
 import type { Trade } from '@/stores/botStore'
+import { isAdminUser } from '@/utils/auth'
 
 const props = defineProps<{
   trades: Trade[]
@@ -12,6 +13,7 @@ const props = defineProps<{
 
 const router = useRouter()
 const botStore = useBotStore()
+const isAdmin = computed(() => isAdminUser())
 
 function formatDate(date: string) {
   return new Date(date).toLocaleString()
@@ -29,7 +31,13 @@ function profitClass(trade: Trade) {
 
 async function handleForceExit(tradeId: number) {
   if (confirm('Are you sure you want to exit this trade?')) {
-    await botStore.forceExit(tradeId.toString())
+    try {
+      await botStore.forceExit(tradeId.toString())
+    } catch (err: any) {
+      console.error('Failed to force exit:', err)
+      const errorMsg = err.response?.data?.detail || err.message || 'Failed to exit trade'
+      alert(`Error: ${errorMsg}`)
+    }
   }
 }
 
@@ -50,7 +58,7 @@ function goToChart(pair: string) {
           <th>Amount</th>
           <th>Profit</th>
           <th v-if="!isOpen">Exit Reason</th>
-          <th v-if="isOpen && showActions">Actions</th>
+          <th v-if="isOpen && showActions && isAdmin">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -81,9 +89,9 @@ function goToChart(pair: string) {
           <td v-if="!isOpen" class="text-gray-400 text-sm">
             {{ trade.exit_reason || '-' }}
           </td>
-          <td v-if="isOpen && showActions">
+          <td v-if="isOpen && showActions && isAdmin">
             <button 
-              @click="handleForceExit(trade.trade_id)"
+              @click.stop="handleForceExit(trade.trade_id)"
               class="text-xs btn btn-danger py-1 px-2"
             >
               Exit
