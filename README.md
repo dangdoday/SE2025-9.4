@@ -1,8 +1,4 @@
-# Project Title
-
-BinanceBot - Ứng dụng giao dịch tự động cho Binance với giao diện quản trị web
-
-Course Project: Software Engineering (SE2025-9.4)
+# BinanceBot - Ứng dụng giao dịch tự động cho Binance với giao diện quản trị web
 
 ## Project Information
 
