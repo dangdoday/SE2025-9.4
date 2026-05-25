@@ -105,7 +105,7 @@
     "api_server": {
         "enabled": true,
         "listen_ip_address": "127.0.0.1",
-        "listen_port": 8080,
+        "listen_port": 2907,
         "verbosity": "error",
         "jwt_secret_key": "somethingrandom",
         "CORS_origins": [

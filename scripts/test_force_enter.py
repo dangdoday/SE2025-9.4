@@ -1,7 +1,7 @@
 import requests
 import json
 
-url = "http://localhost:8080/api/v1/forceenter"
+url = "http://localhost:2907/api/v1/forceenter"
 auth = ("admin", "pass789")
 payload = {
     "pair": "ADA/USDT",

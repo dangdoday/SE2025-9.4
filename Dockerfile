@@ -24,6 +24,6 @@ COPY --from=ui-build /app/frontend/dist /app/backend/binancebot/rpc/api_server/u
 RUN printf "%s" "docker" > /app/backend/binancebot/rpc/api_server/ui/installed/.uiversion
 
 ENV PYTHONPATH=/app/backend
-EXPOSE 8080
+EXPOSE 2907
 
 CMD ["python", "-m", "binancebot", "trade", "--config", "/config/config.json"]

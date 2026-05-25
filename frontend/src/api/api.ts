@@ -25,7 +25,7 @@ api.interceptors.request.use(
         const settings = getSettingsStore()
 
         // Set base URL from settings
-        const baseUrl = settings.apiUrl || 'http://localhost:8080'
+        const baseUrl = settings.apiUrl || 'http://localhost:2907'
         config.baseURL = `${baseUrl}/api/v1`
 
         // Add auth token only if not already set (e.g. for refresh calls)

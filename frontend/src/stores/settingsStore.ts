@@ -14,7 +14,7 @@ const defaultApiUrl = () => {
             return origin
         }
     }
-    return 'http://localhost:8080'
+    return 'http://localhost:2907'
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -31,7 +31,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
     if (!storedApiUrl) {
         localStorage.setItem('api_url', apiUrl.value)
-    } else if (storedApiUrl === 'http://localhost:8080') {
+    } else if (storedApiUrl === 'http://localhost:2907') {
         const resolved = defaultApiUrl()
         if (resolved !== storedApiUrl) {
             apiUrl.value = resolved

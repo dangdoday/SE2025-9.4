@@ -7,12 +7,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BinanceBot - Crypto Trading Bot</title>
   <meta name="description" content="Automated cryptocurrency trading bot with RSI-EMA strategy" />
+  <script>
+    (function(){
+      try{
+        var desired = 'http://localhost:2907';
+        var cur = localStorage.getItem('api_url');
+        if(!cur || cur.indexOf(':8080') !== -1 || cur === 'http://localhost:8080'){
+          localStorage.setItem('api_url', desired);
+        }
+      }catch(e){}
+    })();
+  </script>
   <script type="module" crossorigin src="/assets/index-2Haz5s36.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-QhZmQPKu.css">
 </head>
 
 <body class="bg-dark text-white">
-  <div id="app"></div>
+  <div id="app"></div>
+
 </body>
 
 </html>

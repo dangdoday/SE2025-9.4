@@ -2,13 +2,12 @@
     "$schema": "https://schema.binancebot.local/schema.json",
     "max_open_trades": 10,
     "stake_currency": "USDT",
-    "stake_amount": 5,
+    "stake_amount": 30,
     "tradable_balance_ratio": 0.99,
-    "amount_reserve_percent": 0.01,
     "fiat_display_currency": "USD",
     "timeframe": "5m",
-    "dry_run": false,
-    "dry_run_wallet": 5000,
+    "dry_run": true,
+    "dry_run_wallet": 1000,
     "cancel_open_orders_on_exit": false,
     "unfilledtimeout": {
         "entry": 10,
@@ -33,65 +32,24 @@
     },
     "exchange": {
         "name": "binance",
-        "key": "azKKkq9Kv3nZNRwgrOGZZ3KysSiAWKhtWIMoll09SFEUxP1i32PKDbcmlpfscaez",
-        "secret": "5i4ZygyPjNxmZF7Al1KXWcGvcIE7K1vtvlF8eUQBKjspSAQwqjzZagUdXPSmhps8",
+        "key": "NHẬP_API_KEY_CỦA_BẠN_VÀO_ĐÂY",
+        "secret": "NHẬP_SECRET_KEY_CỦA_BẠN_VÀO_ĐÂY",
         "ccxt_config": {
             "options": {
-                "defaultType": "spot",
-                "adjustForTimeDifference": true,
-                "recvWindow": 60000
+                "defaultType": "spot"
             },
             "sandbox": false
         },
         "ccxt_async_config": {
             "options": {
-                "defaultType": "spot",
-                "adjustForTimeDifference": true,
-                "recvWindow": 60000
+                "defaultType": "spot"
             },
             "sandbox": false
         },
         "pair_whitelist": [
-            "APT/USDT",
-            "ARB/USDT",
-            "ATOM/USDT",
-            "AVAX/USDT",
-            "BNB/USDT",
-            "BONK/USDT",
             "BTC/USDT",
-            "DOGE/USDT",
-            "DOT/USDT",
-            "DYM/USDT",
-            "EGLD/USDT",
             "ETH/USDT",
-            "FET/USDT",
-            "FIL/USDT",
-            "FLOKI/USDT",
-            "GRT/USDT",
-            "IMX/USDT",
-            "INJ/USDT",
-            "JUP/USDT",
-            "LINK/USDT",
-            "MANTA/USDT",
-            "MINA/USDT",
-            "NEAR/USDT",
-            "ONDO/USDT",
-            "OP/USDT",
-            "PEPE/USDT",
-            "PYTH/USDT",
-            "RUNE/USDT",
-            "SAGA/USDT",
-            "SEI/USDT",
-            "SHIB/USDT",
-            "SOL/USDT",
-            "SUI/USDT",
-            "TAO/USDT",
-            "TIA/USDT",
-            "TRB/USDT",
-            "WIF/USDT",
-            "XAI/USDT",
-            "XRP/USDT",
-            "ZK/USDT"
+            "BNB/USDT"
         ],
         "pair_blacklist": []
     },
@@ -107,52 +65,32 @@
     },
     "api_server": {
         "enabled": true,
-        "listen_ip_address": "127.0.0.1",
-        "listen_port": 8080,
+        "listen_ip_address": "0.0.0.0",
+        "listen_port": 2907,
         "verbosity": "error",
         "jwt_secret_key": "somethingrandom",
         "CORS_origins": [
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "http://localhost:2907",
+            "http://127.0.0.1:2907",
+            "http://your.domain.tld:2907"
         ],
-        "username": "admin",
-        "password": "pbkdf2_sha256$100000$5bb1a93b92d5660483135fcfd2bc4ace$41fc4da683a106d54c779b4a20e9cf8e9d3f83bc26e67c2dab6c38a7a277c52f",
+        "username": "binancebot",
+        "password": "SuperSecurePassword",
         "users": [
             {
-                "username": "admin1",
-                "password": "pbkdf2_sha256$100000$567654c79149ee92353b8336f34207a8$b68f7459b3e942079ed18e1346cf0bfeb412c0fd1db937e3cd30cf7d158544f4"
-            },
-            {
-                "username": "admin12",
-                "password": "pbkdf2_sha256$100000$3249e03a218ccde0215757a5f9bfb998$d8f69009815f21f671107ba7f89624a0046cc3b06e44162297a518014b37d9a2"
-            },
-            {
-                "username": "admin123",
-                "password": "pbkdf2_sha256$100000$64caa3457032a8417f57057b3e58e614$ed5c75bb35138ae043095f7357c10ac82865939a886aeaf9c9c6bb2054521706"
-            },
-            {
-                "username": "binancebot",
-                "password": "pbkdf2_sha256$100000$d23f4f930817374124d52d0d2049e521$930440013eebceaddd9424c4deff0b170a8213dc505297610112c364cad665a0"
-            }
-        ],
-        "profiles": [
-            {
-                "id": "03c93dc6-299e-4f62-8b59-4617d3a8bd3d",
-                "name": "Imported Account",
-                "api_key": "azKKkq9Kv3nZNRwgrOGZZ3KysSiAWKhtWIMoll09SFEUxP1i32PKDbcmlpfscaez",
-                "secret_key": "5i4ZygyPjNxmZF7Al1KXWcGvcIE7K1vtvlF8eUQBKjspSAQwqjzZagUdXPSmhps8",
-                "trading_mode": "spot",
-                "margin_mode": null,
-                "is_testnet": false
+                "username": "dangdoday",
+                "password": "pbkdf2_sha256$100000$6622457d8f75421c6bb84f84d756033b$0c3eec9ee0046782c6f4aea6b86bd6845c23bdb68eea9e0779492c399100c2c4"
             }
         ]
     },
     "bot_name": "binancebot",
     "initial_state": "running",
-    "force_entry_enable": true,
+    "force_entry_enable": false,
     "internals": {
         "process_throttle_secs": 5
     },
     "strategy": "RSI_EMA",
-    "strategy_path": "user_data/strategies",
+    "strategy_path": "strategies",
     "trading_mode": "spot"
 }

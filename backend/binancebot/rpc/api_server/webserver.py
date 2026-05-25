@@ -185,8 +185,10 @@ class ApiServer(RPCHandler):
         )
 
         app.add_exception_handler(RPCException, self.handle_rpc_exception)
-        app.add_event_handler(event_type="startup", func=self._api_startup_event)
-        app.add_event_handler(event_type="shutdown", func=self._api_shutdown_event)
+        # Use decorator-based registration to support environments where
+        # `add_event_handler` may not be present on the FastAPI instance.
+        app.on_event("startup")(self._api_startup_event)
+        app.on_event("shutdown")(self._api_shutdown_event)
 
     async def _api_startup_event(self):
         """

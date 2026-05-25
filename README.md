@@ -187,7 +187,10 @@ cp config/config.json.example config/config.json
 docker compose up -d --build
 ```
 
-Access: `http://localhost:8080`
+The compose file already forces the API server to bind to `0.0.0.0` inside Docker,
+so `config/config.json` can stay unchanged for local use.
+
+Access: `http://localhost:2907`
 
 ### 7.3 Local Run (Windows)
 

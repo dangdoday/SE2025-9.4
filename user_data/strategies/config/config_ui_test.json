@@ -97,16 +97,16 @@
   
   "api_server": {
     "enabled": true,
-    "listen_ip_address": "127.0.0.1",
-    "listen_port": 8080,
+    "listen_ip_address": "0.0.0.0",
+    "listen_port": 2907,
     "verbosity": "error",
     "enable_openapi": true,
     "jwt_secret_key": "test-secret-key-change-in-production",
     "ws_token": "test-ws-token-change-in-production",
     "CORS_origins": [
       "http://localhost:3000",
-      "http://127.0.0.1:8080",
-      "http://localhost:8080"
+      "http://127.0.0.1:2907",
+      "http://localhost:2907"
     ],
     "username": "admin",
     "password": "test123"

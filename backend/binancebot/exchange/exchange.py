@@ -350,8 +350,8 @@ class Exchange:
         self.validate_ordertypes(config.get("order_types", {}))
         self.validate_order_time_in_force(config.get("order_time_in_force", {}))
         self.validate_trading_mode_and_margin_mode(self.trading_mode, self.margin_mode)
-        self.validate_pricing(config["exit_pricing"])
-        self.validate_pricing(config["entry_pricing"])
+        self.validate_pricing(config.get("exit_pricing", {}))
+        self.validate_pricing(config.get("entry_pricing", {}))
         self.validate_orderflow(config["exchange"])
         self.validate_AIML(config)
 

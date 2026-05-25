@@ -37,6 +37,10 @@ nano config/config.json
 Set `api_server.listen_ip_address` to `0.0.0.0` so the container can bind externally.
 Update `api_server.CORS_origins` to your frontend URL if needed.
 
+The provided `docker-compose.yml` sets `FT_APP_ENV=docker` and overrides
+`BINANCEBOT__API_SERVER__LISTEN_IP_ADDRESS=0.0.0.0` so the backend binds correctly
+inside the container even if the config file still uses `127.0.0.1`.
+
 ## 4) Run with Docker Compose
 
 ```bash

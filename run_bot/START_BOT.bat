@@ -47,7 +47,7 @@ echo ========================================
 echo    All services started successfully!
 echo ========================================
 echo.
-echo    Backend:  http://localhost:8080
+echo    Backend:  http://localhost:2907
 echo    Frontend: http://localhost:3000
 echo.
 echo    Opening browser...

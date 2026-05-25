@@ -1057,7 +1057,7 @@ CONF_SCHEMA = {
                             "port": {
                                 "description": "Port of the producer.",
                                 "type": "integer",
-                                "default": 8080,
+                                "default": 2907,
                                 "minimum": 0,
                                 "maximum": 65535,
                             },
